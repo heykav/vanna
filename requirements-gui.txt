@@ -1,2 +1,2 @@
-PySide6>=6.5
+PySide6>=6.11.2
 matplotlib>=3.8
