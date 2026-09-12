@@ -11,7 +11,7 @@ dependencies = [
 
 [project.optional-dependencies]
 gui = ["PySide6>=6.5", "matplotlib>=3.8"]
-dev = ["pytest>=7.4"]
+dev = ["pytest>=9.1.1"]
 
 [project.scripts]
 vanna = "vanna.cli:main"
