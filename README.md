@@ -4,8 +4,18 @@ A model-driven options pricing, Greeks, and backtesting library — named
 after the real (if lesser-known) second-order Greek: the sensitivity of
 delta to volatility. Desktop GUI included.
 
-**[Try it live in your browser →](https://heykav.github.io/vanna/)**
-No install, no server, no API key — it's the real Python engine running
+<p>
+  <a href="https://heykav.github.io/vanna/"><img src="https://img.shields.io/badge/Open%20the%20live%20web%20demo-vanna-00FF66?style=for-the-badge&labelColor=0d0e0c" alt="Open the live vanna web demo"></a>
+  &nbsp;&nbsp;
+  <a href="#quick-start"><img src="https://img.shields.io/badge/Run%20locally-pip%20install%20and%20run-161715?style=for-the-badge&labelColor=0d0e0c" alt="Run vanna locally"></a>
+  &nbsp;&nbsp;
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-161715?style=for-the-badge&labelColor=0d0e0c" alt="View the MIT license"></a>
+  &nbsp;&nbsp;
+  <a href="#contributing"><img src="https://img.shields.io/badge/Contribute-read%20how-161715?style=for-the-badge&labelColor=0d0e0c" alt="Read how to contribute to vanna"></a>
+</p>
+
+No install, no server, no API key needed to try it — the
+[live demo](https://heykav.github.io/vanna/) runs the real Python engine
 client-side via [Pyodide](https://pyodide.org) (Python compiled to
 WASM), not a JS reimplementation. `docs/vanna_src` is kept in sync with
 `vanna/pricing` and `vanna/backtest` automatically
@@ -163,6 +173,26 @@ multi-leg, and covered strategies, and inspecting real screenshots
 (catching, along the way, a chart theme that was silently rendering
 plain white instead of the dark theme it was supposed to have) - rather
 than by an automated GUI test suite.
+
+## Contributing
+
+The most useful contribution here is a wrong number: if a Greek formula,
+a strategy's strike selection, or the attribution math produces
+something that doesn't hold up against a finite-difference check or a
+known reference value, that's worth an issue or a PR more than a new
+feature is. Before opening one:
+
+1. Add a test that fails against the current behavior - "this Greek
+   doesn't match a finite difference" or "this strategy's payoff shape
+   is wrong" is a much more useful bug report than a description.
+2. Run `pytest -q` (87 tests currently) and keep it green.
+3. If you touch `vanna/pricing` or `vanna/backtest`, the web demo at
+   `docs/vanna_src` updates itself via
+   `.github/workflows/sync-web-src.yml` - you don't need to copy files
+   by hand, and shouldn't hand-edit `docs/vanna_src` directly.
+
+[Open an issue](https://github.com/heykav/vanna/issues/new) if you want
+to talk through an idea before writing code.
 
 ## License
 
