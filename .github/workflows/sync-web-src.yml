@@ -1,0 +1,44 @@
+name: sync web demo source
+
+# The browser demo (docs/) runs the real vanna.pricing / vanna.backtest
+# source via Pyodide - not a JS reimplementation, per its own README claim.
+# That claim is only true if docs/vanna_src never drifts from vanna/. This
+# copies the pure-Python engine (no PySide6/matplotlib, which Pyodide
+# doesn't need and the demo doesn't use) into docs/vanna_src on every push
+# that touches it, and commits only if something actually changed.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "vanna/pricing/**"
+      - "vanna/backtest/**"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy engine source into docs/vanna_src
+        run: |
+          rm -rf docs/vanna_src/vanna/pricing docs/vanna_src/vanna/backtest
+          mkdir -p docs/vanna_src/vanna/pricing docs/vanna_src/vanna/backtest
+          cp vanna/__init__.py docs/vanna_src/vanna/__init__.py
+          cp vanna/pricing/*.py docs/vanna_src/vanna/pricing/
+          cp vanna/backtest/*.py docs/vanna_src/vanna/backtest/
+
+      - name: Commit if anything changed
+        run: |
+          if git diff --quiet -- docs/vanna_src; then
+            echo "web demo source already in sync"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/vanna_src
+          git commit -m "chore: sync web demo source with vanna/pricing and vanna/backtest" -m "Automated by .github/workflows/sync-web-src.yml"
+          git push

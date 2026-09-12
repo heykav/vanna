@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>vanna — options pricing &amp; Greek-attributed backtesting</title>
+<meta name="description" content="A model-driven options pricing, Greeks, and backtesting library. Real Black-Scholes/binomial pricing and Greek-attributed P&L, running live in your browser via Pyodide." />
+<script src="https://cdn.jsdelivr.net/pyodide/v314.0.6/full/pyodide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0d0e0c;
+    --panel: #161715;
+    --border: #2a2c28;
+    --text: #F4F5F2;
+    --muted: #9a9c96;
+    --accent: #00FF66;
+    --red: #ff5c5c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "SF Pro Text", "Segoe UI", sans-serif;
+    font-size: 14px;
+  }
+  header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  header h1 { margin: 0; font-size: 18px; letter-spacing: 0.5px; }
+  header h1 span { color: var(--accent); }
+  header p { margin: 0; color: var(--muted); font-size: 12px; }
+  header a { color: var(--accent); text-decoration: none; }
+  .layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+  }
+  #controls { flex: 0 0 280px; min-width: 260px; }
+  #results { flex: 1 1 640px; min-width: 300px; }
+  .section-label {
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin: 14px 0 8px;
+  }
+  .section-label:first-child { margin-top: 0; }
+  label { display: block; color: var(--muted); font-size: 12px; margin: 10px 0 4px; }
+  select, input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 4px;
+    padding: 7px 8px;
+    font-size: 13px;
+  }
+  select:focus, input:focus { outline: none; border-color: var(--accent); }
+  button#run {
+    width: 100%;
+    margin-top: 16px;
+    background: var(--accent);
+    color: #06130a;
+    border: none;
+    border-radius: 4px;
+    padding: 11px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button#run:disabled { background: var(--border); color: var(--muted); cursor: wait; }
+  #status { margin-top: 10px; font-size: 11px; color: var(--muted); min-height: 14px; }
+  #status.error { color: var(--red); }
+  .tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .tabs button {
+    background: none; border: none; color: var(--muted);
+    padding: 8px 14px; cursor: pointer; font-size: 13px;
+    border-bottom: 2px solid transparent;
+  }
+  .tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tabpage { display: none; }
+  .tabpage.active { display: block; }
+  canvas { max-width: 100%; }
+  table#summary { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 12px; }
+  table#summary td { padding: 5px 4px; border-bottom: 1px solid var(--border); }
+  table#summary td:first-child { color: var(--muted); }
+  table#summary td:last-child { text-align: right; font-weight: 600; }
+  footer { text-align: center; color: var(--muted); font-size: 11px; padding: 24px; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span>vanna</span> — live in your browser</h1>
+  <p>Real Python (Black-Scholes, binomial tree, Greek-attributed P&amp;L) running client-side via
+     <a href="https://pyodide.org" target="_blank" rel="noopener">Pyodide</a> — the exact same engine as
+     the desktop app and the test suite, not a JS reimplementation.
+     No server, no API key, nothing leaves your machine.
+     <a href="https://github.com/heykav/vanna" target="_blank" rel="noopener">Source →</a>
+  </p>
+</header>
+
+<div class="layout">
+  <div class="panel" id="controls">
+    <div class="section-label">Backtest parameters</div>
+
+    <label for="strategy">Strategy</label>
+    <select id="strategy">
+      <option value="iron_condor" selected>iron_condor</option>
+      <option value="long_call">long_call</option>
+      <option value="short_call">short_call</option>
+      <option value="long_put">long_put</option>
+      <option value="short_put">short_put</option>
+      <option value="long_straddle">long_straddle</option>
+      <option value="short_straddle">short_straddle</option>
+      <option value="long_call_spread">long_call_spread</option>
+      <option value="short_call_spread">short_call_spread</option>
+      <option value="covered_call">covered_call</option>
+    </select>
+
+    <label for="spot">Spot ($)</label>
+    <input id="spot" type="number" value="100" step="1" />
+
+    <label for="iv">Entry IV</label>
+    <input id="iv" type="number" value="0.22" step="0.01" />
+
+    <label for="rate">Risk-free rate</label>
+    <input id="rate" type="number" value="0.03" step="0.005" />
+
+    <label for="drift">Underlying drift (μ)</label>
+    <input id="drift" type="number" value="0.05" step="0.01" />
+
+    <label for="entryDte">Entry DTE</label>
+    <input id="entryDte" type="number" value="30" step="1" />
+
+    <label for="exitDte">Exit DTE</label>
+    <input id="exitDte" type="number" value="10" step="1" />
+
+    <label for="trades">Number of trades</label>
+    <input id="trades" type="number" value="20" step="1" />
+
+    <label for="seed">Random seed</label>
+    <input id="seed" type="number" value="42" step="1" />
+
+    <button id="run" disabled>Loading Python runtime…</button>
+    <div id="status">Downloading Pyodide + NumPy (~10MB, one time)…</div>
+
+    <div class="section-label">Summary</div>
+    <table id="summary"><tbody></tbody></table>
+  </div>
+
+  <div class="panel" id="results">
+    <div class="tabs">
+      <button data-tab="equity" class="active">Equity Curve</button>
+      <button data-tab="payoff">Payoff Diagram</button>
+      <button data-tab="attribution">Greek Attribution</button>
+    </div>
+    <div class="tabpage active" id="tab-equity"><canvas id="chartEquity" height="120"></canvas></div>
+    <div class="tabpage" id="tab-payoff"><canvas id="chartPayoff" height="120"></canvas></div>
+    <div class="tabpage" id="tab-attribution"><canvas id="chartAttribution" height="120"></canvas></div>
+  </div>
+</div>
+
+<footer>Made with ❤️ in India by Krishna Anubhav · <a href="https://github.com/heykav/vanna">heykav/vanna</a></footer>
+
+<script>
+const ACCENT = "#00FF66", MUTED = "#9a9c96", BORDER = "#2a2c28", TEXT = "#F4F5F2", RED = "#ff5c5c";
+Chart.defaults.color = MUTED;
+Chart.defaults.borderColor = BORDER;
+Chart.defaults.font.family = "-apple-system, sans-serif";
+
+const SRC_FILES = [
+  "vanna/__init__.py",
+  "vanna/pricing/__init__.py",
+  "vanna/pricing/black_scholes.py",
+  "vanna/pricing/binomial.py",
+  "vanna/pricing/implied_vol.py",
+  "vanna/backtest/__init__.py",
+  "vanna/backtest/chain.py",
+  "vanna/backtest/strategies.py",
+  "vanna/backtest/attribution.py",
+  "vanna/backtest/engine.py",
+  "vanna/backtest/metrics.py",
+  "web_glue.py",
+];
+
+let pyodide;
+let charts = {};
+
+function setStatus(msg, isError) {
+  const el = document.getElementById("status");
+  el.textContent = msg;
+  el.className = isError ? "error" : "";
+}
+
+async function boot() {
+  try {
+    pyodide = await loadPyodide();
+    await pyodide.loadPackage(["numpy"]);
+
+    pyodide.FS.mkdirTree("/vanna_pkg/vanna/pricing");
+    pyodide.FS.mkdirTree("/vanna_pkg/vanna/backtest");
+    for (const f of SRC_FILES) {
+      const resp = await fetch("vanna_src/" + f);
+      if (!resp.ok) throw new Error("failed to fetch " + f + " (" + resp.status + ")");
+      const text = await resp.text();
+      pyodide.FS.writeFile("/vanna_pkg/" + f, text);
+    }
+    pyodide.runPython(`
+import sys
+sys.path.insert(0, "/vanna_pkg")
+from web_glue import run_web_backtest
+`);
+
+    document.getElementById("run").disabled = false;
+    document.getElementById("run").textContent = "Run backtest";
+    setStatus("Ready.");
+    runBacktest();
+  } catch (e) {
+    setStatus("Failed to load: " + e, true);
+  }
+}
+
+function runBacktest() {
+  const params = {
+    strategy: document.getElementById("strategy").value,
+    s0: parseFloat(document.getElementById("spot").value),
+    iv0: parseFloat(document.getElementById("iv").value),
+    r: parseFloat(document.getElementById("rate").value),
+    mu: parseFloat(document.getElementById("drift").value),
+    entry_dte: parseInt(document.getElementById("entryDte").value),
+    exit_dte: parseInt(document.getElementById("exitDte").value),
+    n_trades: parseInt(document.getElementById("trades").value),
+    seed: parseInt(document.getElementById("seed").value),
+  };
+
+  const fn = pyodide.globals.get("run_web_backtest");
+  let raw;
+  try {
+    raw = fn(params.strategy, params.s0, params.iv0, params.r, params.mu,
+              params.entry_dte, params.exit_dte, params.n_trades, params.seed);
+  } catch (e) {
+    setStatus("Backtest error: " + e, true);
+    return;
+  }
+  const data = JSON.parse(raw);
+  if (data.error) {
+    setStatus(data.error, true);
+    return;
+  }
+  setStatus("Ready.");
+  renderEquity(data.equity_curve);
+  renderPayoff(data.payoff_x, data.payoff_y, data.entry_spot);
+  renderAttribution(data.attribution);
+  renderSummary(data.summary);
+}
+
+function destroyIfExists(key) {
+  if (charts[key]) { charts[key].destroy(); }
+}
+
+function renderEquity(curve) {
+  destroyIfExists("equity");
+  const ctx = document.getElementById("chartEquity");
+  charts.equity = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: curve.map((_, i) => i),
+      datasets: [{
+        data: curve, borderColor: ACCENT, backgroundColor: "rgba(0,255,102,0.12)",
+        fill: true, tension: 0.15, pointRadius: 0, borderWidth: 2,
+      }],
+    },
+    options: {
+      plugins: { legend: { display: false }, title: { display: true, text: "Equity Curve", color: TEXT } },
+      scales: {
+        x: { title: { display: true, text: "Trade #" }, grid: { color: BORDER } },
+        y: { title: { display: true, text: "Cumulative P&L ($/share)" }, grid: { color: BORDER } },
+      },
+    },
+  });
+}
+
+function renderPayoff(xs, ys, entrySpot) {
+  destroyIfExists("payoff");
+  const ctx = document.getElementById("chartPayoff");
+  charts.payoff = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: xs.map((x) => x.toFixed(1)),
+      datasets: [{
+        data: ys, borderColor: ACCENT, backgroundColor: "rgba(0,255,102,0.12)",
+        fill: true, tension: 0, pointRadius: 0, borderWidth: 2,
+      }],
+    },
+    options: {
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: "Payoff at Expiration (most recent trade)", color: TEXT },
+      },
+      scales: {
+        x: { title: { display: true, text: "Underlying price at expiration" }, grid: { color: BORDER } },
+        y: { title: { display: true, text: "P&L ($/share)" }, grid: { color: BORDER } },
+      },
+    },
+  });
+}
+
+function renderAttribution(attribution) {
+  destroyIfExists("attribution");
+  const ctx = document.getElementById("chartAttribution");
+  const labels = Object.keys(attribution);
+  const values = Object.values(attribution);
+  const colors = ["#00FF66", "#6fd94f", "#4fb8d9", "#d9b04f", "#c084fc", "#f472b6", "#5a5c58"];
+  charts.attribution = new Chart(ctx, {
+    type: "bar",
+    data: { labels, datasets: [{ data: values, backgroundColor: colors }] },
+    options: {
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: "Greek P&L Attribution (most recent trade)", color: TEXT },
+      },
+      scales: {
+        y: { title: { display: true, text: "P&L contribution ($/share)" }, grid: { color: BORDER } },
+        x: { grid: { display: false } },
+      },
+    },
+  });
+}
+
+function renderSummary(s) {
+  const rows = [
+    ["Trades", s.n_trades],
+    ["Win rate", (s.win_rate * 100).toFixed(1) + "%"],
+    ["Profit factor", s.profit_factor === null ? "∞" : s.profit_factor.toFixed(2)],
+    ["Total P&L", "$" + s.total_pnl.toFixed(2)],
+    ["Max drawdown", "$" + s.max_drawdown.toFixed(2)],
+    ["Avg P&L / trade", "$" + s.avg_pnl.toFixed(2)],
+  ];
+  document.querySelector("#summary tbody").innerHTML = rows
+    .map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`)
+    .join("");
+}
+
+document.querySelectorAll(".tabs button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tabs button").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll(".tabpage").forEach((p) => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    // Chart.js sizes a canvas from its parent's layout box at creation
+    // time; a canvas created while its .tabpage is display:none has no
+    // box to measure, so it can end up 0-height. Resizing on reveal is
+    // the standard fix - cheap, and correct regardless of which tab
+    // happened to be active when the chart was first drawn.
+    const chart = charts[btn.dataset.tab];
+    if (chart) chart.resize();
+  });
+});
+
+document.getElementById("run").addEventListener("click", runBacktest);
+boot();
+</script>
+</body>
+</html>

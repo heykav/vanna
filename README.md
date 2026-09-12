@@ -4,6 +4,14 @@ A model-driven options pricing, Greeks, and backtesting library — named
 after the real (if lesser-known) second-order Greek: the sensitivity of
 delta to volatility. Desktop GUI included.
 
+**[Try it live in your browser →](https://heykav.github.io/vanna/)**
+No install, no server, no API key — it's the real Python engine running
+client-side via [Pyodide](https://pyodide.org) (Python compiled to
+WASM), not a JS reimplementation. `docs/vanna_src` is kept in sync with
+`vanna/pricing` and `vanna/backtest` automatically
+(`.github/workflows/sync-web-src.yml`), so that claim can't quietly go
+stale.
+
 ![Equity curve](screenshots/equity_curve.png)
 
 ## Why this exists
