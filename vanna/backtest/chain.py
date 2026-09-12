@@ -86,4 +86,12 @@ def nearest_strike(spot: float, target_delta: float, dte_days: int, r: float,
         diff = abs(abs(d) - abs(target_delta))
         if diff < best_diff:
             best_strike, best_diff = float(k), diff
-    return round(best_strike / strike_step) * strike_step
+    rounded = round(best_strike / strike_step) * strike_step
+    # A long enough GBM path (low drift, many trading days) can wander the
+    # underlying down under $1, and rounding to the nearest whole-dollar
+    # strike then produces exactly 0.0 - a real, previously-latent bug,
+    # only surfaced once price_leg started validating its inputs instead
+    # of quietly accepting whatever nearest_strike handed it. A $0 strike
+    # isn't a real strike at any price, so floor at one strike_step
+    # instead of pretending sub-strike_step granularity exists here.
+    return max(rounded, strike_step)

@@ -22,10 +22,15 @@ def main(argv=None):
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args(argv)
 
-    result = run_backtest(
-        strategy=args.strategy, s0=args.spot, iv0=args.iv, r=args.rate, mu=args.drift,
-        entry_dte=args.entry_dte, exit_dte=args.exit_dte, n_trades=args.trades, seed=args.seed,
-    )
+    try:
+        result = run_backtest(
+            strategy=args.strategy, s0=args.spot, iv0=args.iv, r=args.rate, mu=args.drift,
+            entry_dte=args.entry_dte, exit_dte=args.exit_dte, n_trades=args.trades, seed=args.seed,
+        )
+    except ValueError as e:
+        print(f"Invalid parameters: {e}", file=sys.stderr)
+        return 1
+
     if not result.trades:
         print("No trades fit in the simulated window - try --trades lower or --entry-dte shorter.")
         return 1

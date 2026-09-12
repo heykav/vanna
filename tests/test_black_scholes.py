@@ -2,7 +2,35 @@ import math
 
 import pytest
 
-from vanna.pricing.black_scholes import price, greeks
+from vanna.pricing.black_scholes import price, greeks, validate_option_inputs
+
+
+@pytest.mark.parametrize("S,K,T,sigma", [
+    (0, 100, 1.0, 0.2),
+    (-50, 100, 1.0, 0.2),
+    (100, 0, 1.0, 0.2),
+    (100, -10, 1.0, 0.2),
+    (100, 100, 0, 0.2),
+    (100, 100, -1.0, 0.2),
+    (100, 100, 1.0, 0),
+    (100, 100, 1.0, -0.2),
+    (float("nan"), 100, 1.0, 0.2),
+    (float("inf"), 100, 1.0, 0.2),
+])
+def test_rejects_nonpositive_or_nonfinite_inputs_with_a_clear_message(S, K, T, sigma):
+    with pytest.raises(ValueError, match=r"(spot|strike|expiry|volatility)"):
+        price(S, K, T, r=0.03, sigma=sigma, is_call=True)
+    with pytest.raises(ValueError, match=r"(spot|strike|expiry|volatility)"):
+        greeks(S, K, T, r=0.03, sigma=sigma, is_call=True)
+
+
+def test_validate_option_inputs_accepts_sane_values():
+    validate_option_inputs(S=100, K=100, T=1.0, sigma=0.2, r=0.03, q=0.0)  # no raise
+
+
+def test_validate_option_inputs_rejects_nonfinite_rate():
+    with pytest.raises(ValueError, match="risk-free rate"):
+        validate_option_inputs(S=100, K=100, T=1.0, sigma=0.2, r=float("nan"))
 
 
 def test_hull_textbook_call_price():

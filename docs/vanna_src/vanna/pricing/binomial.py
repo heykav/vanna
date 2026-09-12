@@ -19,6 +19,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from vanna.pricing.black_scholes import validate_option_inputs
+
 
 @dataclass(frozen=True)
 class BinomialGreeks:
@@ -31,6 +33,7 @@ class BinomialGreeks:
 def price_binomial(S: float, K: float, T: float, r: float, sigma: float,
                     is_call: bool, q: float = 0.0, steps: int = 200,
                     american: bool = True) -> float:
+    validate_option_inputs(S, K, T, sigma, r, q)
     if steps < 1:
         raise ValueError("steps must be >= 1")
     dt = T / steps

@@ -1,3 +1,5 @@
+import math
+
 import pytest
 
 from vanna.pricing.black_scholes import price as bs_price
@@ -51,3 +53,22 @@ def test_rejects_unstable_step_count():
         # probability out of (0, 1) - the function must refuse rather
         # than silently return a nonsense price.
         price_binomial(S=100, K=100, T=50.0, r=0.5, sigma=0.01, is_call=True, steps=1)
+
+
+@pytest.mark.parametrize("S,K,T,sigma", [
+    (-100, 100, 1.0, 0.2),   # negative spot used to silently divide by zero
+    (100, 100, 0, 0.2),      # T=0 used to raise a bare ZeroDivisionError
+    (100, 100, 1.0, 0),      # sigma=0 - same failure mode as T=0
+])
+def test_rejects_invalid_inputs_with_a_clear_message_instead_of_crashing(S, K, T, sigma):
+    with pytest.raises(ValueError, match=r"(spot|expiry|volatility)"):
+        price_binomial(S, K, T, r=0.03, sigma=sigma, is_call=True)
+
+
+def test_near_expiry_theta_does_not_push_time_negative():
+    # T - h_t must stay positive for any T > 0, in both branches of the
+    # h_t formula - verified directly rather than assumed, since this is
+    # exactly the kind of boundary a finite-difference bump can quietly
+    # break.
+    g = greeks_binomial(S=100, K=100, T=1e-4, r=0.03, sigma=0.2, is_call=True, steps=50)
+    assert math.isfinite(g.theta)

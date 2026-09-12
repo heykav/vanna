@@ -64,6 +64,32 @@ def test_rejects_exit_dte_not_less_than_entry_dte():
                       entry_dte=10, exit_dte=10, n_trades=1, seed=0)
 
 
+@pytest.mark.parametrize("bad_kwargs,match", [
+    ({"s0": 0}, "s0"),
+    ({"s0": -100}, "s0"),
+    ({"s0": float("nan")}, "s0"),
+    ({"iv0": 0}, "iv0"),
+    ({"iv0": -0.2}, "iv0"),
+    ({"r": float("inf")}, "risk-free rate"),
+    ({"mu": float("nan")}, "mu"),
+    ({"entry_dte": 0}, "entry_dte"),
+    ({"entry_dte": -5}, "entry_dte"),
+    ({"exit_dte": -1}, "exit_dte"),
+    ({"n_trades": 0}, "n_trades"),
+    ({"n_trades": -3}, "n_trades"),
+])
+def test_rejects_invalid_backtest_params_with_a_specific_message(bad_kwargs, match):
+    # Every one of these used to fail several calls deep with an unrelated
+    # error (a numpy ValueError for negative `size`, a bare crash in
+    # nearest_strike for non-positive spot) instead of a clear message
+    # pointing at the actual bad argument.
+    kwargs = dict(strategy="long_call", s0=100, iv0=0.2, r=0.03, mu=0.0,
+                  entry_dte=30, exit_dte=10, n_trades=5, seed=0)
+    kwargs.update(bad_kwargs)
+    with pytest.raises(ValueError, match=match):
+        run_backtest(**kwargs)
+
+
 def test_summarize_matches_manual_win_rate_and_profit_factor():
     result = run_backtest("iron_condor", s0=100, iv0=0.20, r=0.02, mu=0.0,
                            entry_dte=30, exit_dte=7, n_trades=20, seed=5)

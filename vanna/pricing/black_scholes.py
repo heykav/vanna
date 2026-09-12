@@ -34,9 +34,31 @@ def _norm_cdf(x: float) -> float:
     return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
 
 
+def validate_option_inputs(S: float, K: float, T: float, sigma: float,
+                            r: float | None = None, q: float | None = None) -> None:
+    """Raises a specific, actionable ValueError for the first bad input,
+    rather than letting a negative/zero S or K fall through to a bare
+    `math domain error` from log() or a ZeroDivisionError three calls deep.
+    This matters more than it looks: every one of S, K, sigma reaches this
+    code from raw user-typed numbers in the CLI, the GUI, and the browser
+    demo - none of them are ever validated upstream of here."""
+    for name, value in (("S (spot)", S), ("K (strike)", K), ("T (time to expiry)", T)):
+        if not math.isfinite(value):
+            raise ValueError(f"{name} must be a finite number, got {value!r}")
+        if value <= 0:
+            raise ValueError(f"{name} must be positive, got {value!r}")
+    if not math.isfinite(sigma):
+        raise ValueError(f"sigma (volatility) must be a finite number, got {sigma!r}")
+    if sigma <= 0:
+        raise ValueError(f"sigma (volatility) must be positive, got {sigma!r}")
+    if r is not None and not math.isfinite(r):
+        raise ValueError(f"r (risk-free rate) must be a finite number, got {r!r}")
+    if q is not None and not math.isfinite(q):
+        raise ValueError(f"q (dividend yield) must be a finite number, got {q!r}")
+
+
 def _d1_d2(S: float, K: float, T: float, r: float, q: float, sigma: float) -> tuple[float, float]:
-    if T <= 0 or sigma <= 0:
-        raise ValueError("T and sigma must be positive for Black-Scholes d1/d2")
+    validate_option_inputs(S, K, T, sigma, r, q)
     vol_sqrt_t = sigma * math.sqrt(T)
     d1 = (math.log(S / K) + (r - q + 0.5 * sigma * sigma) * T) / vol_sqrt_t
     d2 = d1 - vol_sqrt_t

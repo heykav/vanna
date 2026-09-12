@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QLabel,
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QLabel,
     QComboBox, QDoubleSpinBox, QSpinBox, QPushButton, QTabWidget,
     QTableWidget, QTableWidgetItem, QMessageBox,
 )
@@ -59,46 +59,62 @@ class MainWindow(QMainWindow):
         self.strategy_box = QComboBox()
         self.strategy_box.addItems(sorted(STRATEGIES))
         self.strategy_box.setCurrentText("iron_condor")
+        self.strategy_box.setToolTip("Which multi-leg strategy to simulate.")
         form.addRow("Strategy", self.strategy_box)
 
         self.spot_box = self._spin(50, 2000, 100, 1)
+        self.spot_box.setToolTip("Starting underlying price for the simulated GBM path.")
         form.addRow("Spot ($)", self.spot_box)
 
         self.iv_box = self._spin(0.01, 3.0, 0.22, 0.01, decimals=2)
+        self.iv_box.setToolTip("Starting implied volatility; it then follows a mean-reverting daily path.")
         form.addRow("Entry IV", self.iv_box)
 
         self.rate_box = self._spin(0.0, 0.2, 0.03, 0.005, decimals=3)
+        self.rate_box.setToolTip("Continuously-compounded risk-free rate used for discounting.")
         form.addRow("Risk-free rate", self.rate_box)
 
         self.drift_box = self._spin(-0.5, 0.5, 0.05, 0.01, decimals=2)
+        self.drift_box.setToolTip("Annualized drift (μ) of the simulated underlying path.")
         form.addRow("Underlying drift (μ)", self.drift_box)
 
         self.entry_dte_box = QSpinBox()
         self.entry_dte_box.setRange(2, 365)
         self.entry_dte_box.setValue(30)
+        self.entry_dte_box.setToolTip("Days to expiration when each trade is opened.")
         form.addRow("Entry DTE", self.entry_dte_box)
 
         self.exit_dte_box = QSpinBox()
         self.exit_dte_box.setRange(0, 364)
         self.exit_dte_box.setValue(10)
+        self.exit_dte_box.setToolTip("Days to expiration when each trade is closed (0 = hold to expiry). Must be less than Entry DTE.")
         form.addRow("Exit DTE", self.exit_dte_box)
 
         self.n_trades_box = QSpinBox()
         self.n_trades_box.setRange(1, 500)
         self.n_trades_box.setValue(20)
+        self.n_trades_box.setToolTip("How many sequential (non-overlapping) trades to simulate.")
         form.addRow("Number of trades", self.n_trades_box)
 
         self.seed_box = QSpinBox()
         self.seed_box.setRange(0, 999999)
         self.seed_box.setValue(42)
+        self.seed_box.setToolTip("Random seed - the same seed always reproduces the same simulated path.")
         form.addRow("Random seed", self.seed_box)
 
         outer.addLayout(form)
 
-        run_btn = QPushButton("Run backtest")
-        run_btn.clicked.connect(self._on_run)
+        self.run_btn = QPushButton("Run backtest")
+        self.run_btn.setDefault(True)
+        self.run_btn.setToolTip("Run (or press Enter)")
+        self.run_btn.clicked.connect(self._on_run)
         outer.addSpacing(10)
-        outer.addWidget(run_btn)
+        outer.addWidget(self.run_btn)
+
+        pnl_note = QLabel("$ figures are per share - x100 for a standard equity option contract.")
+        pnl_note.setWordWrap(True)
+        pnl_note.setStyleSheet("font-size: 10px;")
+        outer.addWidget(pnl_note)
 
         outer.addSpacing(16)
         summary_header = QLabel("SUMMARY")
@@ -125,6 +141,14 @@ class MainWindow(QMainWindow):
         return tabs
 
     def _on_run(self):
+        # A large entry_dte * n_trades combination can take several real
+        # seconds (the day-by-day attribution walk in engine.py is the
+        # cost) - without this, the whole window just freezes with no
+        # feedback for that long, which reads as a hang, not a busy app.
+        self.run_btn.setEnabled(False)
+        self.run_btn.setText("Running…")
+        self.setCursor(Qt.WaitCursor)
+        QApplication.processEvents()
         try:
             result = run_backtest(
                 strategy=self.strategy_box.currentText(),
@@ -140,6 +164,10 @@ class MainWindow(QMainWindow):
         except ValueError as e:
             QMessageBox.warning(self, "Backtest error", str(e))
             return
+        finally:
+            self.run_btn.setEnabled(True)
+            self.run_btn.setText("Run backtest")
+            self.unsetCursor()
 
         if not result.trades:
             QMessageBox.information(self, "No trades",

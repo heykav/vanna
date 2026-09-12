@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import math
 
-from vanna.pricing.black_scholes import price, greeks
+from vanna.pricing.black_scholes import price, greeks, validate_option_inputs
 
 
 class ImpliedVolError(ValueError):
@@ -30,6 +30,16 @@ def implied_vol(market_price: float, S: float, K: float, T: float, r: float,
                  bisection_bounds: tuple[float, float] = (1e-4, 5.0),
                  bisection_tol: float = 1e-6,
                  bisection_max_iter: int = 100) -> float:
+    # Validate S/K/T/r *before* anything below tries a sigma - if this
+    # didn't happen here, a bad S or K would raise inside greeks() during
+    # the Newton loop, get caught by the `except ValueError: break` below
+    # (which is only meant to catch sigma drifting out of range), and
+    # silently degrade into a confusing bisection failure instead of a
+    # clear error pointing at the actual bad input.
+    validate_option_inputs(S, K, T, sigma=initial_guess, r=r, q=q)
+    if not math.isfinite(market_price) or market_price < 0:
+        raise ImpliedVolError(f"market_price must be a non-negative finite number, got {market_price!r}")
+
     # The correct no-arbitrage floor for a *European* option discounts both
     # legs first - S - K undiscounted looks like a hard floor but isn't one;
     # with enough time value of money, a European put can trade well below

@@ -10,6 +10,7 @@ leg of the move rather than one net number that hides the round trip.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 
 from vanna.backtest.attribution import attribute_pnl, position_value, AttributionResult
@@ -44,10 +45,30 @@ def run_backtest(strategy: str, s0: float, iv0: float, r: float, mu: float,
                   entry_dte: int, exit_dte: int, n_trades: int,
                   seed: int = 0, vol_of_vol: float = 0.01,
                   iv_mean_reversion: float = 0.05, **strategy_params) -> BacktestResult:
+    # This is the facade every entry point (CLI, GUI, browser demo) calls
+    # with raw, unvalidated user input. Without checks here, a bad value
+    # doesn't fail here with a clear message - it fails several calls deep
+    # (nearest_strike crashing on a non-positive spot, numpy refusing a
+    # negative `size` for a negative day count, and so on), with an error
+    # that points at the wrong place entirely.
     if strategy not in STRATEGIES:
         raise ValueError(f"unknown strategy {strategy!r}; choose from {sorted(STRATEGIES)}")
+    if not math.isfinite(s0) or s0 <= 0:
+        raise ValueError(f"s0 (spot) must be a positive finite number, got {s0!r}")
+    if not math.isfinite(iv0) or iv0 <= 0:
+        raise ValueError(f"iv0 (entry IV) must be a positive finite number, got {iv0!r}")
+    if not math.isfinite(r):
+        raise ValueError(f"r (risk-free rate) must be a finite number, got {r!r}")
+    if not math.isfinite(mu):
+        raise ValueError(f"mu (drift) must be a finite number, got {mu!r}")
+    if entry_dte <= 0:
+        raise ValueError(f"entry_dte must be a positive integer, got {entry_dte!r}")
+    if exit_dte < 0:
+        raise ValueError(f"exit_dte must be zero or a positive integer, got {exit_dte!r}")
     if exit_dte >= entry_dte:
         raise ValueError("exit_dte must be less than entry_dte (you hold until fewer days remain)")
+    if n_trades <= 0:
+        raise ValueError(f"n_trades must be a positive integer, got {n_trades!r}")
 
     strategy_fn = STRATEGIES[strategy]
     total_days = n_trades * entry_dte + 5

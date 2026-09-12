@@ -128,7 +128,7 @@ git clone https://github.com/heykav/vanna.git
 cd vanna
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev,gui]"
-pytest -q                      # 87 tests
+pytest -q                      # 120 tests
 python main.py                 # launches the GUI
 vanna iron_condor --trades 20  # or just use the CLI
 ```
@@ -161,18 +161,48 @@ breakdown.
 pytest -q
 ```
 
-87 tests: closed-form Greeks against finite differences and a textbook
+120 tests: closed-form Greeks against finite differences and a textbook
 reference price, the binomial tree against Black-Scholes convergence and
 known early-exercise behavior, the IV solver recovering known vols
 (including the low-vega cases that force the bisection fallback), the
-attribution math's residual-shrinks-cubically property, and full
-end-to-end backtest determinism/consistency checks. No GUI test
-automation yet - the GUI was verified by actually launching it under
-`QT_QPA_PLATFORM=offscreen`, running real backtests across single-leg,
-multi-leg, and covered strategies, and inspecting real screenshots
-(catching, along the way, a chart theme that was silently rendering
-plain white instead of the dark theme it was supposed to have) - rather
-than by an automated GUI test suite.
+attribution math's residual-shrinks-cubically property, full end-to-end
+backtest determinism/consistency checks, and input validation across
+every entry point. No GUI test automation yet - the GUI was verified by
+actually launching it under `QT_QPA_PLATFORM=offscreen`, running real
+backtests across single-leg, multi-leg, and covered strategies, and
+inspecting real screenshots (catching, along the way, a chart theme that
+was silently rendering plain white instead of the dark theme it was
+supposed to have) - rather than by an automated GUI test suite.
+
+A real bug worth naming: a long enough simulated path (high `entry_dte`,
+many trades, near-zero drift) can wander the underlying down under $1,
+and `nearest_strike` used to round that down to a strike of exactly
+`$0.0`, which then crashed pricing several calls away with a confusing
+"K must be positive" error pointing nowhere near the actual cause. It
+surfaced only once `validate_option_inputs` started actually being
+called - which is itself the argument for validating at every boundary
+rather than just at the ones that happen to get exercised by existing
+tests. Fixed by flooring the rounded strike at one `strike_step`, with a
+regression test that walks the exact scenario that found it.
+
+## Security
+
+- Every pricing/backtest entry point validates its inputs and fails with
+  a specific message (`vanna.pricing.black_scholes.validate_option_inputs`,
+  and the checks in `run_backtest`) instead of letting a bad value crash
+  several calls deep with an unrelated error - or, worse, silently produce
+  a wrong number.
+- The web demo pins Subresource Integrity hashes on the Pyodide and
+  Chart.js `<script>` tags and ships a Content-Security-Policy restricting
+  script/style/connect sources to `'self'` plus that one CDN origin - so a
+  compromised or tampered CDN response would be refused, not executed.
+  `docs/app.js` also builds the summary table via DOM APIs rather than
+  `innerHTML` string interpolation, on general principle even though
+  every value going into it today is a computed number, not user text.
+- See [`SECURITY.md`](SECURITY.md) for what this does *not* cover (SRI
+  can't reach Pyodide's internally-fetched WASM/zip files; GitHub Pages
+  doesn't allow custom response headers, so `frame-ancestors` genuinely
+  isn't set) and how to report a vulnerability.
 
 ## Contributing
 
@@ -185,7 +215,7 @@ feature is. Before opening one:
 1. Add a test that fails against the current behavior - "this Greek
    doesn't match a finite difference" or "this strategy's payoff shape
    is wrong" is a much more useful bug report than a description.
-2. Run `pytest -q` (87 tests currently) and keep it green.
+2. Run `pytest -q` (120 tests currently) and keep it green.
 3. If you touch `vanna/pricing` or `vanna/backtest`, the web demo at
    `docs/vanna_src` updates itself via
    `.github/workflows/sync-web-src.yml` - you don't need to copy files
