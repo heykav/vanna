@@ -5,11 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>vanna — options pricing &amp; Greek-attributed backtesting</title>
 <meta name="description" content="A model-driven options pricing, Greeks, and backtesting library. Real Black-Scholes/binomial pricing and Greek-attributed P&L, running live in your browser via Pyodide." />
+<meta name="keywords" content="options pricing, Black-Scholes, binomial tree, options Greeks, vanna, volga, options backtesting, implied volatility, iron condor, quantitative finance, Python, Pyodide" />
+<meta name="author" content="Krishna Anubhav" />
+<meta name="robots" content="index, follow, max-image-preview:large" />
+<link rel="canonical" href="https://heykav.github.io/vanna/" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://heykav.github.io/vanna/" />
+<meta property="og:title" content="vanna — options pricing &amp; Greek-attributed backtesting" />
+<meta property="og:description" content="Real Black-Scholes/binomial options pricing and Greek-attributed P&amp;L backtesting, running live in your browser via Pyodide — not a JS reimplementation." />
+<meta property="og:image" content="https://heykav.github.io/vanna/og-image.png" />
+<meta property="og:image:width" content="1280" />
+<meta property="og:image:height" content="800" />
+<meta property="og:site_name" content="vanna" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="vanna — options pricing &amp; Greek-attributed backtesting" />
+<meta name="twitter:description" content="Real Black-Scholes/binomial options pricing and Greek-attributed P&amp;L backtesting, running live in your browser via Pyodide." />
+<meta name="twitter:image" content="https://heykav.github.io/vanna/og-image.png" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='84'%3E%F0%9F%A7%AE%3C/text%3E%3C/svg%3E" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"vanna","applicationCategory":"FinanceApplication","operatingSystem":"Web Browser (Pyodide/WASM)","url":"https://heykav.github.io/vanna/","description":"A model-driven options pricing, Greeks, and backtesting library. Real Black-Scholes/binomial pricing and Greek-attributed P&L, running live in your browser via Pyodide.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"featureList":["Black-Scholes pricing","Binomial tree early-exercise pricing","Greek-attributed P&L decomposition (delta/gamma/theta/vega/vanna/volga)","Options strategy backtesting","Implied volatility solving"],"author":{"@type":"Person","name":"Krishna Anubhav","url":"https://github.com/heykav"},"codeRepository":"https://github.com/heykav/vanna"}
+</script>
 <!-- frame-ancestors and X-Frame-Options can't be set via <meta> - only a
      real HTTP response header - and GitHub Pages doesn't let a static
      site add custom response headers, so that protection genuinely isn't
      available here rather than silently pretended at. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self' https://cdn.jsdelivr.net; img-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'" />
 <link rel="stylesheet" href="styles.css" />
 <script src="https://cdn.jsdelivr.net/pyodide/v314.0.6/full/pyodide.js"
         integrity="sha384-NV89XnNMjL1QhwMSII1A5nl9HxxqvDhq6dsIoI2bComfFnFR06or2wdEAHhXEgOI"
