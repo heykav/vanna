@@ -232,4 +232,4 @@ without copyleft obligations.
 
 ---
 
-Made with ❤️ in India by Krishna Anubhav.
+Made with ❤️ in India by [Krishna Anubhav](https://github.com/heykav).
