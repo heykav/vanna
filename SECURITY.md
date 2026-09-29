@@ -24,10 +24,26 @@ That keeps the realistic attack surface small, but not zero:
   `frame-ancestors` - so clickjacking protection genuinely isn't present
   here, rather than quietly assumed.
 
+## Supported versions
+
+There are no tagged releases yet. Only the latest commit on `main` is
+supported; fixes are made there and not backported.
+
 ## Reporting a vulnerability
 
-Please [open an issue](https://github.com/heykav/vanna/issues/new) or, for
-anything you'd rather not post publicly, use GitHub's private
-["Report a vulnerability"](https://github.com/heykav/vanna/security/advisories/new)
-flow on this repo. There's no bug bounty - this is a personal project -
-but a real report will get read and fixed.
+Please do not report security problems in a public issue.
+
+1. Preferred: use GitHub's private
+   ["Report a vulnerability"](https://github.com/heykav/vanna/security/advisories/new)
+   flow on this repo (GitHub private vulnerability reporting).
+2. If that is unavailable to you, email the owner at
+   heykavofficial@gmail.com.
+
+This is a personal project maintained by one person. Response is
+best-effort: there is no guaranteed response time or fix timeline, and no
+bug bounty. A real report will be read, and I will say what I plan to do
+about it. Please allow reasonable time before disclosing publicly.
+
+Wrong numbers from the pricing or backtest code (a Greek that disagrees
+with a reference value, for example) are ordinary bugs, not security
+issues; a normal public issue is the right place for those.

@@ -124,7 +124,8 @@ dV ≈ Δ·dS + ½·Γ·dS² + Θ·dt + Vega·dσ + Vanna·dS·dσ + ½·Volga·
 ```
 
 evaluated with the Greeks at the *start* of each period. The leftover -
-actual P&L minus the sum of those six terms - is reported honestly as
+actual P&L minus the sum of those six terms (and the dividend term, when
+`q` is non-zero) - is reported honestly as
 `residual`, not folded into whichever bucket would make the chart look
 cleanest. A real risk desk would never let third-order effects quietly
 disappear into "vega P&L" just to make a pie chart sum to 100%, and
