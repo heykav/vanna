@@ -22,6 +22,68 @@ WASM), not a JS reimplementation. `docs/vanna_src` is kept in sync with
 (`.github/workflows/sync-web-src.yml`), so that claim can't quietly go
 stale.
 
+## What this is, and is not
+
+**Is:** a small Python library for pricing single-name equity options
+from first principles and for backtesting option strategies with the P&L
+broken down by Greek.
+
+- Black-Scholes-Merton price and Greeks (delta, gamma, vega, theta, rho,
+  plus vanna and volga), a Cox-Ross-Rubinstein binomial tree for American
+  exercise, and an implied-vol solver.
+- A sequential strategy backtester (ten strategies) whose trades are
+  attributed to delta, gamma, theta, vega, vanna, volga, dividends, and an
+  explicit residual.
+- Checked against QuantLib and py_vollib: see [docs/benchmarks.md](docs/benchmarks.md)
+  for the measured accuracy and speed, including where vanna is slower.
+
+**Is not:**
+
+- **Not a historical backtester.** Backtests run on synthetic paths
+  (geometric Brownian motion plus a stylised mean-reverting IV), so results
+  are only as realistic as that model. There is no market-data loader.
+- **Not for index, futures, or multi-asset options.** Single-name equity
+  options only; European (closed form) and American (tree) exercise.
+- **Dividends are a continuous yield only.** No discrete dividends,
+  borrow curves, or term structures; rates and volatility are flat.
+- **Not trading advice**, and not production-audited software.
+
+## Quick start
+
+`vanna` is not on PyPI yet. Install from source:
+
+```bash
+git clone https://github.com/heykav/vanna.git
+cd vanna
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev,gui]"    # drop ",gui" if you only need the library
+pytest -q
+vanna iron_condor --trades 20  # CLI;  python main.py launches the GUI
+```
+
+```python
+from vanna.pricing.black_scholes import price, greeks
+from vanna.backtest.engine import run_backtest
+
+price(S=100, K=100, T=0.25, r=0.03, sigma=0.22, is_call=True, q=0.01)
+greeks(S=100, K=100, T=0.25, r=0.03, sigma=0.22, is_call=True).vanna
+
+result = run_backtest("covered_call", s0=100, iv0=0.22, r=0.03, mu=0.0,
+                      entry_dte=30, exit_dte=10, n_trades=20, seed=42, q=0.01)
+print(result.trades[-1].attribution)
+```
+
+More: runnable scripts in [`examples/`](examples) (price and Greeks,
+implied vol, covered-call backtest with attribution, dividends), and the
+[API reference](docs/API.md).
+
+**Names.** The distribution name in `pyproject.toml` is `vanna-greeks`,
+because the PyPI name `vanna` belongs to an unrelated project (vanna-ai).
+The import package and the CLI stay `vanna`. Nothing has been published; if
+this is released, `pip install vanna-greeks` would be the command, and it
+should not be installed into the same environment as the unrelated `vanna`
+package, since both provide a top-level `vanna` module.
+
 ![Equity curve](screenshots/equity_curve.png)
 
 ## Why this exists
@@ -122,30 +184,6 @@ picked from a real chain (see below).
   convention; multiply displayed dollar figures by 100 for what a real
   100-share equity option contract would show.
 
-## Quick start
-
-```bash
-git clone https://github.com/heykav/vanna.git
-cd vanna
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev,gui]"
-pytest -q                      # 120 tests
-python main.py                 # launches the GUI
-vanna iron_condor --trades 20  # or just use the CLI
-```
-
-```python
-from vanna.pricing.black_scholes import price, greeks
-
-price(S=100, K=100, T=0.25, r=0.03, sigma=0.22, is_call=True)
-greeks(S=100, K=100, T=0.25, r=0.03, sigma=0.22, is_call=True).vanna
-
-from vanna.backtest.engine import run_backtest
-result = run_backtest("iron_condor", s0=100, iv0=0.22, r=0.03, mu=0.0,
-                       entry_dte=30, exit_dte=10, n_trades=20, seed=42)
-print(result.trades[-1].attribution)
-```
-
 ## GUI
 
 PySide6 + matplotlib, three tabs: the equity curve, the payoff diagram
@@ -162,7 +200,7 @@ breakdown.
 pytest -q
 ```
 
-120 tests: closed-form Greeks against finite differences and a textbook
+The test suite covers: closed-form Greeks against finite differences and a textbook
 reference price, the binomial tree against Black-Scholes convergence and
 known early-exercise behavior, the IV solver recovering known vols
 (including the low-vega cases that force the bisection fallback), the
@@ -216,7 +254,7 @@ feature is. Before opening one:
 1. Add a test that fails against the current behavior - "this Greek
    doesn't match a finite difference" or "this strategy's payoff shape
    is wrong" is a much more useful bug report than a description.
-2. Run `pytest -q` (120 tests currently) and keep it green.
+2. Run `pytest -q` and keep it green.
 3. If you touch `vanna/pricing` or `vanna/backtest`, the web demo at
    `docs/vanna_src` updates itself via
    `.github/workflows/sync-web-src.yml` - you don't need to copy files

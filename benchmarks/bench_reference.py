@@ -325,7 +325,7 @@ def env_info():
     except Exception:
         cpu = platform.processor() or "unknown"
     return dict(python=sys.version.split()[0], platform=platform.platform(), cpu=cpu,
-                vanna=v("vanna") if v("vanna") != "n/a" else v("vanna-greeks"),
+                vanna=v("vanna-greeks") if v("vanna-greeks") != "n/a" else v("vanna"),
                 QuantLib=v("QuantLib"), py_vollib=v("py_vollib"),
                 lets_be_rational=v("lets_be_rational"), numpy=v("numpy"))
 
