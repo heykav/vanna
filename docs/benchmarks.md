@@ -165,7 +165,7 @@ lattice noise. Greeks are now read from the first layers of the same tree
 about 1e-5 and 1e-6 (max), and one call is one tree instead of seven.
 
 **Binomial theta needs a caveat.** In the continuation region, vanna's tree
-theta agrees with QuantLib's to about 1e-2 relative. Deep in the
+theta agrees with QuantLib's to well under 1% relative (spot-checked on four points, not over the whole grid). Deep in the
 early-exercise region (for example a 110-strike put at S = 100) the two
 libraries genuinely disagree: vanna reports 0 (the option is worth
 `K - S`, which does not decay), while QuantLib reports a positive number
