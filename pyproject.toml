@@ -1,5 +1,5 @@
 [project]
-name = "vanna"
+name = "vanna-greeks"
 version = "0.1.0"
 description = "A model-driven options pricing, Greeks, and backtesting library."
 readme = "README.md"
