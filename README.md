@@ -1,3 +1,10 @@
+<p align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/hero-dark.svg">
+  <img src="docs/img/hero-light.svg" alt="vanna banner: options pricing, Greeks and backtesting with every trade's P&amp;L attributed to its Greeks, over a plot of Black-Scholes call value against spot at four expiries">
+</picture>
+</p>
+
 # vanna
 
 A model-driven options pricing, Greeks, and backtesting library — named
@@ -84,7 +91,7 @@ this is released, `pip install vanna-greeks` would be the command, and it
 should not be installed into the same environment as the unrelated `vanna`
 package, since both provide a top-level `vanna` module.
 
-![Equity curve](screenshots/equity_curve.png)
+![Equity curve from the desktop GUI](screenshots/equity_curve.png)
 
 ## Why this exists
 
@@ -123,7 +130,17 @@ cleanest. A real risk desk would never let third-order effects quietly
 disappear into "vega P&L" just to make a pie chart sum to 100%, and
 neither does this.
 
-![Greek attribution](screenshots/greek_attribution.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/attribution-dark.png">
+  <img src="docs/img/attribution-light.png" alt="Waterfall chart of one covered-call trade's P&amp;L split into delta, gamma, theta, vega, vanna, volga, dividend and residual terms that sum to the total of +3.23 per share" width="900">
+</picture>
+
+*One real trade (third trade of the `seed=42` covered-call run in
+[`examples/`](examples), with a 1% dividend yield). The bars sum exactly to
+the trade's P&L; the residual is the small leftover, shown rather than
+hidden. Regenerate with `python scripts/make_figures.py`.*
+
+![Greek attribution in the desktop GUI](screenshots/greek_attribution.png)
 
 `tests/test_attribution.py` checks this isn't just algebra that happens
 to balance: it verifies the residual actually shrinks roughly cubically
@@ -132,6 +149,17 @@ second-order Taylor expansion), and that a pure-spot move zeroes out
 theta/vega/vanna/volga exactly rather than leaking into them.
 
 ## Pricing core - verified, not just transcribed
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/accuracy-dark.png">
+  <img src="docs/img/accuracy-light.png" alt="Bar charts of the maximum absolute difference between vanna and QuantLib or py_vollib for price, delta, gamma, vega, theta and rho, all below 2e-12, plus implied-vol recovery error below 2e-9" width="900">
+</picture>
+
+*Measured on a 2,016-point European grid against QuantLib 1.43 and
+py_vollib 1.0.12; the full tables, method and caveats (including where the
+binomial tree is slower) are in [docs/benchmarks.md](docs/benchmarks.md).
+This shows the formulas are transcribed correctly, not that
+Black-Scholes fits any market.*
 
 - **Black-Scholes + Greeks** (`vanna.pricing.black_scholes`): closed-form
   price, delta, gamma, theta, vega, rho, and the second-order vanna and
@@ -157,6 +185,14 @@ theta/vega/vanna/volga exactly rather than leaking into them.
   after a deep-ITM, long-dated test case caught it failing.
 
 ## Strategies
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/payoff-dark.png">
+  <img src="docs/img/payoff-light.png" alt="Payoff diagram of a covered call at expiration: profit rises with the stock up to the 106 strike then is capped at about +4.70 per share, with losses below break-even similar to holding the stock" width="900">
+</picture>
+
+*Covered-call payoff at expiration for the strikes and premium of the same
+trade as above (per share).*
 
 Ten, not thirty-eight - implemented and tested properly rather than
 templated out: `long_call`, `short_call`, `long_put`, `short_put`,
