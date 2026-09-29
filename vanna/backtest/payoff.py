@@ -6,7 +6,7 @@ import numpy as np
 from vanna.backtest.chain import price_leg
 
 
-def payoff_curve(legs, r: float, iv: float, entry_spot: float, spots):
+def payoff_curve(legs, r: float, iv: float, entry_spot: float, spots, q: float = 0.0):
     """P&L at expiration for each spot in `spots` (pure, no Qt needed).
 
     Stock legs pay quantity * (S - entry_spot); option legs pay intrinsic
@@ -14,7 +14,7 @@ def payoff_curve(legs, r: float, iv: float, entry_spot: float, spots):
     """
     entry_cost = sum(
         leg.quantity * (entry_spot if leg.is_stock
-                        else price_leg(entry_spot, leg.strike, leg.dte_days, r, iv, leg.is_call))
+                        else price_leg(entry_spot, leg.strike, leg.dte_days, r, iv, leg.is_call, q))
         for leg in legs
     )
     payoffs = []

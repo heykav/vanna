@@ -60,29 +60,31 @@ def simulate_iv_path(iv0: float, vol_of_vol: float, mean_reversion: float,
 
 
 def price_leg(spot: float, strike: float, dte_days: int, r: float, iv: float,
-              is_call: bool) -> float:
+              is_call: bool, q: float = 0.0) -> float:
     T = max(dte_days, 0) / TRADING_DAYS_PER_YEAR
     if T <= 0:
         return max(spot - strike, 0.0) if is_call else max(strike - spot, 0.0)
-    return bs_price(spot, strike, T, r, iv, is_call)
+    return bs_price(spot, strike, T, r, iv, is_call, q)
 
 
-def leg_greeks(spot: float, strike: float, dte_days: int, r: float, iv: float, is_call: bool):
+def leg_greeks(spot: float, strike: float, dte_days: int, r: float, iv: float, is_call: bool,
+               q: float = 0.0):
     T = max(dte_days, 0) / TRADING_DAYS_PER_YEAR
     if T <= 0:
         return None  # at/past expiry, Greeks aren't defined the same way - caller uses intrinsic
-    return bs_greeks(spot, strike, T, r, iv, is_call)
+    return bs_greeks(spot, strike, T, r, iv, is_call, q)
 
 
 def nearest_strike(spot: float, target_delta: float, dte_days: int, r: float,
-                    iv: float, is_call: bool, strike_step: float = 1.0) -> float:
+                    iv: float, is_call: bool, strike_step: float = 1.0,
+                    q: float = 0.0) -> float:
     """Pick the strike whose Black-Scholes delta is closest to target_delta,
     scanning a reasonable range around spot at strike_step increments."""
     T = max(dte_days, 1) / TRADING_DAYS_PER_YEAR
     candidates = np.arange(spot * 0.5, spot * 1.5, strike_step)
     best_strike, best_diff = None, float("inf")
     for k in candidates:
-        d = bs_greeks(spot, float(k), T, r, iv, is_call).delta
+        d = bs_greeks(spot, float(k), T, r, iv, is_call, q).delta
         diff = abs(abs(d) - abs(target_delta))
         if diff < best_diff:
             best_strike, best_diff = float(k), diff
