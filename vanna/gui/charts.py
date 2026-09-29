@@ -5,7 +5,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
 from vanna.gui.theme import ACCENT, BG, BORDER, MUTED, PANEL, RED, TEXT
-from vanna.backtest.chain import price_leg
+from vanna.backtest.payoff import payoff_curve
 
 
 class _Canvas(FigureCanvasQTAgg):
@@ -51,21 +51,9 @@ class PayoffChart(_Canvas):
     def plot(self, legs, r: float, iv: float, entry_spot: float):
         self.ax.clear()
         self._style()
-        entry_cost = sum(
-            leg.quantity * price_leg(entry_spot, leg.strike, leg.dte_days, r, iv, leg.is_call)
-            for leg in legs
-        )
         lo, hi = entry_spot * 0.7, entry_spot * 1.3
         spots = np.linspace(lo, hi, 200)
-        payoffs = []
-        for s in spots:
-            intrinsic = sum(
-                leg.quantity * (max(s - leg.strike, 0.0) if leg.is_call else max(leg.strike - s, 0.0))
-                for leg in legs
-            )
-            payoffs.append(intrinsic - entry_cost)
-
-        payoffs = np.array(payoffs)
+        payoffs = payoff_curve(legs, r, iv, entry_spot, spots)
         self.ax.plot(spots, payoffs, color=ACCENT, linewidth=2)
         self.ax.axhline(0, color=MUTED, linewidth=0.8)
         self.ax.axvline(entry_spot, color=RED, linewidth=0.8, linestyle="--", label="Entry spot")

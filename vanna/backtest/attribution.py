@@ -47,6 +47,9 @@ class AttributionResult:
 def position_value(legs: list[Leg], spot: float, r: float, iv: float, elapsed_days: int) -> float:
     total = 0.0
     for leg in legs:
+        if leg.is_stock:
+            total += leg.quantity * spot
+            continue
         remaining = leg.dte_days - elapsed_days
         total += leg.quantity * price_leg(spot, leg.strike, remaining, r, iv, leg.is_call)
     return total
@@ -65,6 +68,9 @@ def attribute_pnl(legs: list[Leg], r: float,
 
     delta = gamma = theta = vega = vanna = volga = 0.0
     for leg in legs:
+        if leg.is_stock:
+            delta += leg.quantity  # pure delta: dV = quantity * dS exactly
+            continue
         remaining = leg.dte_days - elapsed0
         g = leg_greeks(s0, leg.strike, remaining, r, iv0, leg.is_call)
         if g is None:
