@@ -19,6 +19,10 @@ class Leg:
     strike: float
     quantity: int  # +1 = long one contract, -1 = short one contract
     dte_days: int  # DTE at entry, for this leg's expiry
+    # A stock leg is one share of the underlying (delta exactly 1, no
+    # gamma/theta/vega). `strike` holds the entry spot as a reference price
+    # and `is_call`/`dte_days` are unused for pricing.
+    is_stock: bool = False
 
 
 def _k(spot, delta, dte, r, iv, is_call):
@@ -77,10 +81,13 @@ def iron_condor(spot, r, iv, dte_days, wing_delta=0.16, body_delta=0.30, **_):
 
 
 def covered_call(spot, r, iv, dte_days, delta=0.30, **_):
-    # +100 shares modeled as a deep-ITM synthetic-delta-1 "leg" is overkill
-    # here; the engine treats covered_call specially (see engine.py) by
-    # holding the underlying directly and this leg as the short call.
-    return [Leg(True, _k(spot, delta, dte_days, r, iv, True), -1, dte_days)]
+    # Long one share of the underlying (a real stock leg, priced at spot
+    # with delta 1) plus a short OTM call. Quantities are per-share, like
+    # every other leg here, so the call is 1 option on 1 share.
+    return [
+        Leg(True, float(spot), +1, dte_days, is_stock=True),
+        Leg(True, _k(spot, delta, dte_days, r, iv, True), -1, dte_days),
+    ]
 
 
 STRATEGIES = {
