@@ -28,7 +28,7 @@ def implied_vol(market_price: float, S: float, K: float, T: float, r: float,
                  newton_tol: float = 1e-8,
                  newton_max_iter: int = 50,
                  bisection_bounds: tuple[float, float] = (1e-4, 5.0),
-                 bisection_tol: float = 1e-6,
+                 bisection_tol: float = 1e-10,
                  bisection_max_iter: int = 100) -> float:
     # Validate S/K/T/r *before* anything below tries a sigma - if this
     # didn't happen here, a bad S or K would raise inside greeks() during
@@ -62,11 +62,16 @@ def implied_vol(market_price: float, S: float, K: float, T: float, r: float,
         except ValueError:
             break
         diff = g.price - market_price
-        if abs(diff) < newton_tol:
-            return sigma
         vega = g.vega
         if vega < 1e-8:
+            if abs(diff) < newton_tol and diff == 0.0:
+                return sigma
             break  # flat derivative - Newton isn't reliable here, fall back
+        # Converged only when the price matches AND the implied Newton step
+        # in sigma is negligible. A price tolerance alone is not enough: at
+        # low vega a 1e-8 price error is a much larger error in sigma.
+        if abs(diff) < newton_tol and abs(diff / vega) < 1e-9:
+            return sigma
         sigma -= diff / vega
         if sigma <= 0 or sigma > bisection_bounds[1]:
             break  # stepped outside a sane range - fall back rather than chase it
@@ -88,7 +93,9 @@ def _bisection(market_price, S, K, T, r, is_call, q, bounds, tol, max_iter):
     for _ in range(max_iter):
         mid = 0.5 * (lo + hi)
         f_mid = price(S, K, T, r, mid, is_call, q) - market_price
-        if abs(f_mid) < tol or (hi - lo) < tol:
+        # `tol` is a width in sigma, not a price tolerance: where vega is
+        # tiny, a price residual of 1e-6 can still leave sigma off by 1e-2.
+        if f_mid == 0.0 or (hi - lo) < tol:
             return mid
         if f_lo * f_mid <= 0:
             hi = mid

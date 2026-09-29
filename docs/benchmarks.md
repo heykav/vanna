@@ -1,0 +1,211 @@
+# Benchmarks: accuracy and speed against reference libraries
+
+Everything below was measured locally by `benchmarks/bench_reference.py`
+(one run, output pasted verbatim). Nothing is estimated or copied from
+another source. Re-run it to get numbers for your own machine; timings in
+particular vary by hardware and load, and the accuracy tables are
+deterministic.
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -e . QuantLib py_vollib scipy
+python benchmarks/bench_reference.py --json results.json
+```
+
+The benchmark is not part of the default `pytest` run. A small subset of it
+lives in `tests/test_reference_quantlib.py` and is skipped automatically
+when QuantLib is not installed.
+
+## Method
+
+- **References.** QuantLib 1.43 (`AnalyticEuropeanEngine`,
+  `BinomialVanillaEngine` with the `crr` tree) and py_vollib 1.0.12
+  (`black_scholes_merton`, whose implied vol uses `lets_be_rational`).
+  mibian was installed but is not included: it only reports price/Greeks in
+  rounded percent-and-days units and would add nothing beyond py_vollib.
+- **Conventions aligned.** T = calendar days / 365 (QuantLib
+  `Actual365Fixed`, `NullCalendar`, so there is no day-count ambiguity).
+  All values are compared in vanna's units: vega per 1.00 of sigma, rho per
+  1.00 of r, theta per year of calendar time (`-dV/dT`). py_vollib reports
+  vega/rho per 1% and theta per day; these were rescaled (x100, x100, x365).
+  With those conversions there is **no convention discrepancy** for
+  European options.
+- **European grid (2,016 points).** S = 100; K in {70, 80, 90, 100, 110,
+  120, 130}; sigma in {0.10, 0.20, 0.40, 0.80}; r in {0, 2%, 5%}; expiry in
+  {7, 30, 90, 180, 365, 730} days; q in {0, 3%}; call and put.
+- **Implied vol.** Take the QuantLib price at a known sigma, ask each
+  solver to recover sigma, report `|recovered - sigma|`. Points whose time
+  value is below 1e-8 (204 of 2,016) are skipped: the price carries no
+  volatility information at double precision, so no solver can be judged.
+  No solver failed on the remaining 1,812.
+- **American grid (144 points).** S = 100; K in {90, 100, 110}; sigma in
+  {0.20, 0.40}; r in {2%, 5%}; expiry in {30, 180, 365} days; q in {0, 3%};
+  call and put; 200-step CRR tree (vanna's default).
+- **Relative error** is only computed where the reference value has
+  magnitude above 1e-4 (otherwise it measures noise in a near-zero number);
+  the count is not shown per row but the absolute columns cover every point.
+- **Timing.** Median of repeated batches, single thread, one representative
+  ATM 6-month call. This is per-call Python latency, not throughput.
+
+## Results
+
+### Environment
+
+- python: 3.11.15
+- platform: Linux-6.18.44-fc-v37-x86_64-with-glibc2.39
+- cpu: Intel(R) Xeon(R) Processor @ 2.10GHz
+- vanna: 0.1.0
+- QuantLib: 1.43
+- py_vollib: 1.0.12
+- lets_be_rational: 1.1.2
+- numpy: 2.4.6
+
+European grid: 2016 points; American grid: 144 points
+
+### European: Black-Scholes-Merton
+
+| comparison | n | max abs | mean abs | max rel | mean rel | worst case |
+|---|---:|---:|---:|---:|---:|---|
+| vanna vs QuantLib: price | 2016 | 6.75e-14 | 6.67e-15 | 3.42e-11 | 1.45e-13 | K=130.0 vol=0.2 r=0.05 d=90 q=0.03 P |
+| vanna vs QuantLib: delta | 2016 | 6.72e-15 | 2.12e-16 | 1.61e-13 | 2.47e-15 | K=100.0 vol=0.1 r=0.02 d=7 q=0.0 P |
+| vanna vs QuantLib: gamma | 2016 | 3.02e-16 | 1.36e-17 | 1.86e-13 | 4.14e-15 | K=110.0 vol=0.4 r=0.02 d=7 q=0.03 C |
+| vanna vs QuantLib: vega | 2016 | 9.59e-14 | 7.20e-15 | 1.81e-13 | 6.48e-15 | K=110.0 vol=0.1 r=0.0 d=365 q=0.03 C |
+| vanna vs QuantLib: theta | 2016 | 1.39e-12 | 4.63e-14 | 3.47e-12 | 2.92e-14 | K=130.0 vol=0.1 r=0.02 d=7 q=0.03 P |
+| vanna vs QuantLib: rho | 2016 | 1.71e-13 | 9.45e-15 | 1.79e-12 | 8.99e-15 | K=100.0 vol=0.1 r=0.02 d=730 q=0.0 C |
+| vanna vs py_vollib: price | 2016 | 4.26e-14 | 6.06e-15 | 1.97e-11 | 1.92e-13 | K=130.0 vol=0.1 r=0.02 d=365 q=0.0 P |
+| py_vollib vs QuantLib: price | 2016 | 4.62e-14 | 5.36e-15 | 3.59e-11 | 2.69e-13 | K=130.0 vol=0.4 r=0.02 d=7 q=0.03 P |
+| vanna vs py_vollib: delta | 2016 | 2.22e-16 | 2.63e-17 | 5.64e-13 | 2.95e-15 | K=120.0 vol=0.2 r=0.05 d=7 q=0.03 P |
+| py_vollib vs QuantLib: delta | 2016 | 6.77e-15 | 2.12e-16 | 5.90e-13 | 4.15e-15 | K=100.0 vol=0.1 r=0.02 d=7 q=0.0 P |
+| vanna vs py_vollib: gamma | 2016 | 1.11e-16 | 7.83e-19 | 4.54e-16 | 5.42e-17 | K=100.0 vol=0.1 r=0.0 d=7 q=0.03 C |
+| py_vollib vs QuantLib: gamma | 2016 | 2.98e-16 | 1.34e-17 | 1.86e-13 | 4.12e-15 | K=110.0 vol=0.4 r=0.02 d=7 q=0.03 C |
+| vanna vs py_vollib: vega | 2016 | 1.42e-14 | 8.47e-16 | 5.16e-16 | 6.15e-17 | K=90.0 vol=0.2 r=0.0 d=730 q=0.0 C |
+| py_vollib vs QuantLib: vega | 2016 | 9.59e-14 | 7.22e-15 | 1.81e-13 | 6.47e-15 | K=110.0 vol=0.1 r=0.0 d=365 q=0.03 C |
+| vanna vs py_vollib: theta | 2016 | 4.26e-14 | 8.77e-16 | 3.36e-13 | 1.22e-15 | K=110.0 vol=0.8 r=0.02 d=7 q=0.03 C |
+| py_vollib vs QuantLib: theta | 2016 | 1.39e-12 | 4.64e-14 | 3.47e-12 | 2.96e-14 | K=130.0 vol=0.1 r=0.02 d=7 q=0.03 P |
+| vanna vs py_vollib: rho | 2016 | 5.68e-14 | 1.90e-15 | 5.79e-13 | 4.23e-15 | K=130.0 vol=0.2 r=0.02 d=730 q=0.03 P |
+| py_vollib vs QuantLib: rho | 2016 | 1.71e-13 | 9.52e-15 | 1.39e-12 | 9.82e-15 | K=100.0 vol=0.1 r=0.02 d=730 q=0.0 C |
+| implied vol (vanna) vs true sigma | 1812 | 9.72e-10 | 4.44e-11 | 9.72e-09 | 2.66e-10 | K=80.0 vol=0.1 r=0.02 d=90 q=0.0 C |
+| implied vol (py_vollib) vs true sigma | 1812 | 7.24e-10 | 3.38e-12 | 7.24e-09 | 2.69e-11 | K=130.0 vol=0.1 r=0.0 d=90 q=0.0 P |
+| implied vol (QuantLib) vs true sigma | 1812 | 1.66e-09 | 4.66e-12 | 1.66e-08 | 3.86e-11 | K=130.0 vol=0.1 r=0.0 d=90 q=0.03 P |
+
+Implied-vol failures (no root returned): {'vanna': 0, 'py_vollib': 0}; grid points skipped as ill-posed (time value < 1e-8): 204
+
+### American: binomial
+
+| comparison | n | max abs | mean abs | max rel | mean rel | worst case |
+|---|---:|---:|---:|---:|---:|---|
+| vanna(200) vs QuantLib CRR(200): price | 144 | 3.98e-04 | 6.02e-05 | 3.65e-05 | 5.32e-06 | K=90.0 vol=0.2 r=0.05 d=365 q=0.0 C |
+| vanna(200) vs QuantLib CRR(2000): price | 144 | 1.76e-02 | 5.35e-03 | 1.36e-02 | 1.16e-03 | K=100.0 vol=0.4 r=0.02 d=365 q=0.0 C |
+| QuantLib CRR(200) vs QuantLib CRR(2000): price | 144 | 1.79e-02 | 5.36e-03 | 1.36e-02 | 1.16e-03 | K=100.0 vol=0.4 r=0.02 d=365 q=0.0 C |
+| vanna(200) vs QuantLib CRR(200): delta | 144 | 1.23e-05 | 1.46e-06 | 2.65e-05 | 3.01e-06 | K=100.0 vol=0.2 r=0.05 d=365 q=0.0 C |
+| vanna(200) vs QuantLib CRR(2000): delta | 144 | 9.94e-04 | 1.26e-04 | 1.29e-02 | 6.92e-04 | K=110.0 vol=0.2 r=0.05 d=30 q=0.0 P |
+| vanna(200) vs QuantLib CRR(200): gamma | 144 | 1.14e-06 | 4.90e-08 | 4.09e-05 | 2.82e-06 | K=110.0 vol=0.2 r=0.05 d=365 q=0.0 P |
+| vanna(200) vs QuantLib CRR(2000): gamma | 144 | 6.59e-03 | 9.85e-05 | 2.64e-01 | 4.24e-03 | K=110.0 vol=0.2 r=0.05 d=30 q=0.0 P |
+| vanna(200) vs QuantLib CRR(200): theta | 144 | 1.81e+00 | 1.38e-02 | 1.00e+00 | 7.10e-03 | K=110.0 vol=0.2 r=0.05 d=30 q=0.0 P |
+| vanna(200) vs QuantLib CRR(2000): theta | 144 | 4.98e-01 | 2.49e-02 | 1.00e+00 | 9.49e-03 | K=110.0 vol=0.2 r=0.05 d=30 q=0.0 P |
+| vanna(200) theta vs time-difference of QuantLib CRR(2000) price | 144 | 5.06e-01 | 8.05e-02 | 1.00e+00 | 1.64e-02 | K=110.0 vol=0.4 r=0.05 d=180 q=0.0 C |
+| vanna binomial(european, 200) vs vanna closed form: price | 144 | 1.96e-02 | 6.30e-03 | 1.48e-02 | 1.35e-03 | K=100.0 vol=0.4 r=0.02 d=365 q=0.0 P |
+
+### Timing (median seconds per call, single thread)
+
+| operation | implementation | time per call |
+|---|---|---:|
+| BS price | vanna | 1.0 us |
+| BS price | py_vollib | 3.6 us |
+| BS price | QuantLib (reused instrument) | 3.0 us |
+| BS price | QuantLib (build instrument per call) | 49.1 us |
+| all Greeks (delta,gamma,vega,theta,rho) | vanna (greeks(), also gives vanna+volga) | 3.2 us |
+| all Greeks (delta,gamma,vega,theta,rho) | py_vollib (5 separate calls) | 11.9 us |
+| all Greeks (delta,gamma,vega,theta,rho) | QuantLib (reused instrument) | 5.4 us |
+| implied vol (ATM, well-conditioned) | vanna | 11.3 us |
+| implied vol (ATM, well-conditioned) | py_vollib (lets_be_rational) | 18.1 us |
+| implied vol (ATM, well-conditioned) | QuantLib | 13.5 us |
+| American price, CRR 200 steps | vanna (numpy-vectorised tree) | 1,786.6 us |
+| American price, CRR 200 steps | QuantLib (incl. building option) | 249.1 us |
+| American delta/gamma/theta, 200 steps | vanna (greeks_binomial: one tree, price+delta+gamma+theta) | 1,751.2 us |
+| American delta/gamma/theta, 200 steps | QuantLib (tree-native) | 262.5 us |
+
+## Reading the results
+
+**Closed-form Black-Scholes-Merton agrees with both references to machine
+precision** (max absolute error around 1e-12 or better for every quantity,
+including theta and rho, with dividends). This is what one would expect from
+the same formula evaluated in double precision, and it means the unit and
+sign conventions in `vanna.pricing.black_scholes` are the standard ones. It
+is a check that the formulas are transcribed correctly, not evidence that
+Black-Scholes is a good model of any market.
+
+**Implied vol** now agrees with py_vollib and QuantLib to about 1e-9 in
+sigma on this grid. This benchmark found a real defect in the previous
+solver: it stopped when the *price* residual fell below 1e-6 (bisection) or
+1e-8 (Newton), which at low vega leaves sigma far off. On this grid the old
+code was off by more than 1e-6 in sigma at 82 of the 1,812 points, and by
+up to 9.3e-3 (0.93 vol points) for a one-week 30%-OTM option with vega about
+1e-4. The solver now also requires the Newton step in sigma to be negligible
+and bisects on interval width in sigma. `bisection_tol` therefore now means
+a width in sigma (default 1e-10), not a price tolerance.
+`tests/test_pricing_accuracy.py` pins this case.
+
+**Binomial American price.** vanna's 200-step CRR price agrees with
+QuantLib's 200-step CRR to 4e-4 absolute (they are the same model up to
+differences in how the up-probability and node spots are computed). Both
+are 200-step approximations: against QuantLib's 2,000-step tree the error
+is up to about 1.8e-2 for either, so treat the tree price as good to roughly
+a cent or two at this step count, and raise `steps` if you need more. The
+tree oscillates with step count; it is not monotone.
+
+**Binomial Greeks were inaccurate and are fixed.** The first run of this
+benchmark showed the old bump-and-reprice `greeks_binomial` disagreeing
+badly with QuantLib: gamma off by up to 0.54 in absolute terms and delta by
+up to 0.018, with theta off by up to about 1 to 2 per year. The cause is that a
+tree price is a lattice function of spot, and a bump of 0.1% of spot is much
+smaller than the node spacing (around 2%), so finite differences measured
+lattice noise. Greeks are now read from the first layers of the same tree
+(Hull's method): delta and gamma agree with QuantLib's 200-step tree to
+about 1e-5 and 1e-6 (max), and one call is one tree instead of seven.
+
+**Binomial theta needs a caveat.** In the continuation region, vanna's tree
+theta agrees with QuantLib's to well under 1% relative (spot-checked on four points, not over the whole grid). Deep in the
+early-exercise region (for example a 110-strike put at S = 100) the two
+libraries genuinely disagree: vanna reports 0 (the option is worth
+`K - S`, which does not decay), while QuantLib reports a positive number
+because it derives theta from the Black-Scholes PDE identity, which does not
+hold where exercise is optimal. A time-difference of a 2,000-step QuantLib
+price is a fairer reference; against it vanna's 200-step theta still has a
+worst-case absolute error of about 0.5 per year and up to 100% relative
+error near the exercise boundary. Tree theta at 200 steps is a coarse
+estimate; use more steps or a PDE method if you rely on it.
+
+## Speed
+
+Numbers are in the table above; on this machine:
+
+- vanna's closed-form price, Greeks and implied vol are faster per call than
+  py_vollib and QuantLib called from Python. That is mostly Python call
+  overhead: QuantLib's C++ engine is fast, but each call crosses the SWIG
+  boundary and touches quote/handle objects, and building a fresh
+  instrument per call costs about 50 us. If you already reuse a
+  QuantLib instrument, its 3 us price is close to vanna's 1 us. vanna's
+  `greeks()` also returns vanna and volga, which the others do not compute
+  in these calls.
+- **The binomial tree is where vanna is slower.** Even after vectorising the
+  backward induction with numpy (about 3.5x faster than the previous
+  pure-Python loop, 6.3 ms), a 200-step American price takes about 1.8 ms
+  against roughly 0.25 ms for QuantLib's C++ tree, i.e. about 7x slower.
+  Pricing a large chain of American options with vanna will be noticeably
+  slower than with QuantLib.
+
+## Caveats
+
+- One machine, one run; timings are indicative only. The environment block
+  above lists the hardware and versions used.
+- Agreement with references shows numerical correctness of the formulas and
+  tree, not model realism. vanna assumes constant rates, a constant
+  continuous dividend yield and flat volatility.
+- The grid is finite. Extreme inputs (very short expiries with very
+  low vol, tiny option values) are covered only partly; the skipped
+  implied-vol points are listed above.
+- American exercise is priced with a CRR tree only. Discrete dividends,
+  calendars, and holidays are not modelled, and none of that is tested here.
+- QuantLib and py_vollib are benchmark-only dependencies; vanna itself
+  depends only on numpy.
