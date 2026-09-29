@@ -15,6 +15,8 @@ def main(argv=None):
     parser.add_argument("--spot", type=float, default=100.0)
     parser.add_argument("--iv", type=float, default=0.22)
     parser.add_argument("--rate", type=float, default=0.03)
+    parser.add_argument("--div-yield", type=float, default=0.0,
+                        help="continuous dividend yield q (default 0)")
     parser.add_argument("--drift", type=float, default=0.0, help="underlying drift (mu)")
     parser.add_argument("--entry-dte", type=int, default=30)
     parser.add_argument("--exit-dte", type=int, default=10)
@@ -24,7 +26,7 @@ def main(argv=None):
 
     try:
         result = run_backtest(
-            strategy=args.strategy, s0=args.spot, iv0=args.iv, r=args.rate, mu=args.drift,
+            strategy=args.strategy, s0=args.spot, iv0=args.iv, r=args.rate, mu=args.drift, q=args.div_yield,
             entry_dte=args.entry_dte, exit_dte=args.exit_dte, n_trades=args.trades, seed=args.seed,
         )
     except ValueError as e:
