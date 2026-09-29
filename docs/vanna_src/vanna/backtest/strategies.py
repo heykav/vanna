@@ -25,53 +25,53 @@ class Leg:
     is_stock: bool = False
 
 
-def _k(spot, delta, dte, r, iv, is_call):
-    return nearest_strike(spot, delta, dte, r, iv, is_call)
+def _k(spot, delta, dte, r, iv, is_call, q=0.0):
+    return nearest_strike(spot, delta, dte, r, iv, is_call, q=q)
 
 
-def long_call(spot, r, iv, dte_days, delta=0.35, **_):
-    return [Leg(True, _k(spot, delta, dte_days, r, iv, True), +1, dte_days)]
+def long_call(spot, r, iv, dte_days, delta=0.35, q=0.0, **_):
+    return [Leg(True, _k(spot, delta, dte_days, r, iv, True, q), +1, dte_days)]
 
 
-def short_call(spot, r, iv, dte_days, delta=0.35, **_):
-    return [Leg(True, _k(spot, delta, dte_days, r, iv, True), -1, dte_days)]
+def short_call(spot, r, iv, dte_days, delta=0.35, q=0.0, **_):
+    return [Leg(True, _k(spot, delta, dte_days, r, iv, True, q), -1, dte_days)]
 
 
-def long_put(spot, r, iv, dte_days, delta=0.35, **_):
-    return [Leg(False, _k(spot, delta, dte_days, r, iv, False), +1, dte_days)]
+def long_put(spot, r, iv, dte_days, delta=0.35, q=0.0, **_):
+    return [Leg(False, _k(spot, delta, dte_days, r, iv, False, q), +1, dte_days)]
 
 
-def short_put(spot, r, iv, dte_days, delta=0.35, **_):
-    return [Leg(False, _k(spot, delta, dte_days, r, iv, False), -1, dte_days)]
+def short_put(spot, r, iv, dte_days, delta=0.35, q=0.0, **_):
+    return [Leg(False, _k(spot, delta, dte_days, r, iv, False, q), -1, dte_days)]
 
 
-def long_straddle(spot, r, iv, dte_days, **_):
+def long_straddle(spot, r, iv, dte_days, q=0.0, **_):
     k = round(spot)
     return [Leg(True, k, +1, dte_days), Leg(False, k, +1, dte_days)]
 
 
-def short_straddle(spot, r, iv, dte_days, **_):
+def short_straddle(spot, r, iv, dte_days, q=0.0, **_):
     k = round(spot)
     return [Leg(True, k, -1, dte_days), Leg(False, k, -1, dte_days)]
 
 
-def long_call_spread(spot, r, iv, dte_days, long_delta=0.40, short_delta=0.20, **_):
-    k_long = _k(spot, long_delta, dte_days, r, iv, True)
-    k_short = _k(spot, short_delta, dte_days, r, iv, True)
+def long_call_spread(spot, r, iv, dte_days, long_delta=0.40, short_delta=0.20, q=0.0, **_):
+    k_long = _k(spot, long_delta, dte_days, r, iv, True, q)
+    k_short = _k(spot, short_delta, dte_days, r, iv, True, q)
     return [Leg(True, k_long, +1, dte_days), Leg(True, k_short, -1, dte_days)]
 
 
-def short_call_spread(spot, r, iv, dte_days, long_delta=0.40, short_delta=0.20, **_):
-    k_long = _k(spot, long_delta, dte_days, r, iv, True)
-    k_short = _k(spot, short_delta, dte_days, r, iv, True)
+def short_call_spread(spot, r, iv, dte_days, long_delta=0.40, short_delta=0.20, q=0.0, **_):
+    k_long = _k(spot, long_delta, dte_days, r, iv, True, q)
+    k_short = _k(spot, short_delta, dte_days, r, iv, True, q)
     return [Leg(True, k_long, -1, dte_days), Leg(True, k_short, +1, dte_days)]
 
 
-def iron_condor(spot, r, iv, dte_days, wing_delta=0.16, body_delta=0.30, **_):
-    call_short = _k(spot, body_delta, dte_days, r, iv, True)
-    call_long = _k(spot, wing_delta, dte_days, r, iv, True)
-    put_short = _k(spot, body_delta, dte_days, r, iv, False)
-    put_long = _k(spot, wing_delta, dte_days, r, iv, False)
+def iron_condor(spot, r, iv, dte_days, wing_delta=0.16, body_delta=0.30, q=0.0, **_):
+    call_short = _k(spot, body_delta, dte_days, r, iv, True, q)
+    call_long = _k(spot, wing_delta, dte_days, r, iv, True, q)
+    put_short = _k(spot, body_delta, dte_days, r, iv, False, q)
+    put_long = _k(spot, wing_delta, dte_days, r, iv, False, q)
     return [
         Leg(True, call_short, -1, dte_days),
         Leg(True, call_long, +1, dte_days),
@@ -80,13 +80,13 @@ def iron_condor(spot, r, iv, dte_days, wing_delta=0.16, body_delta=0.30, **_):
     ]
 
 
-def covered_call(spot, r, iv, dte_days, delta=0.30, **_):
+def covered_call(spot, r, iv, dte_days, delta=0.30, q=0.0, **_):
     # Long one share of the underlying (a real stock leg, priced at spot
     # with delta 1) plus a short OTM call. Quantities are per-share, like
     # every other leg here, so the call is 1 option on 1 share.
     return [
         Leg(True, float(spot), +1, dte_days, is_stock=True),
-        Leg(True, _k(spot, delta, dte_days, r, iv, True), -1, dte_days),
+        Leg(True, _k(spot, delta, dte_days, r, iv, True, q), -1, dte_days),
     ]
 
 

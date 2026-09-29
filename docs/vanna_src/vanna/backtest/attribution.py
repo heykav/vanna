@@ -42,29 +42,40 @@ class AttributionResult:
     vanna_pnl: float
     volga_pnl: float
     residual: float
+    # Dividend income accrued on stock legs (continuous yield q). Included in
+    # total_pnl, not in the Taylor terms, so `residual` is unaffected. Always
+    # 0.0 when q == 0.
+    dividend_pnl: float = 0.0
 
 
-def position_value(legs: list[Leg], spot: float, r: float, iv: float, elapsed_days: int) -> float:
+def position_value(legs: list[Leg], spot: float, r: float, iv: float, elapsed_days: int,
+                   q: float = 0.0) -> float:
     total = 0.0
     for leg in legs:
         if leg.is_stock:
             total += leg.quantity * spot
             continue
         remaining = leg.dte_days - elapsed_days
-        total += leg.quantity * price_leg(spot, leg.strike, remaining, r, iv, leg.is_call)
+        total += leg.quantity * price_leg(spot, leg.strike, remaining, r, iv, leg.is_call, q)
     return total
 
 
 def attribute_pnl(legs: list[Leg], r: float,
                    s0: float, iv0: float, elapsed0: int,
-                   s1: float, iv1: float, elapsed1: int) -> AttributionResult:
+                   s1: float, iv1: float, elapsed1: int, q: float = 0.0) -> AttributionResult:
     ds = s1 - s0
     dsigma = iv1 - iv0
     dt = (elapsed1 - elapsed0) / TRADING_DAYS_PER_YEAR
 
-    v0 = position_value(legs, s0, r, iv0, elapsed0)
-    v1 = position_value(legs, s1, r, iv1, elapsed1)
-    total_pnl = v1 - v0
+    v0 = position_value(legs, s0, r, iv0, elapsed0, q)
+    v1 = position_value(legs, s1, r, iv1, elapsed1, q)
+    # Continuous dividends accrue to long stock (and are owed by short stock):
+    # q * S dt, with S taken as the average over the period.
+    dividend_pnl = 0.0
+    if q:
+        shares = sum(leg.quantity for leg in legs if leg.is_stock)
+        dividend_pnl = shares * q * 0.5 * (s0 + s1) * dt
+    total_pnl = v1 - v0 + dividend_pnl
 
     delta = gamma = theta = vega = vanna = volga = 0.0
     for leg in legs:
@@ -72,7 +83,7 @@ def attribute_pnl(legs: list[Leg], r: float,
             delta += leg.quantity  # pure delta: dV = quantity * dS exactly
             continue
         remaining = leg.dte_days - elapsed0
-        g = leg_greeks(s0, leg.strike, remaining, r, iv0, leg.is_call)
+        g = leg_greeks(s0, leg.strike, remaining, r, iv0, leg.is_call, q)
         if g is None:
             continue  # already at/past expiry at the start of this period
         delta += leg.quantity * g.delta
@@ -89,11 +100,12 @@ def attribute_pnl(legs: list[Leg], r: float,
     vanna_pnl = vanna * ds * dsigma
     volga_pnl = 0.5 * volga * dsigma ** 2
 
-    explained = delta_pnl + gamma_pnl + theta_pnl + vega_pnl + vanna_pnl + volga_pnl
+    explained = (delta_pnl + gamma_pnl + theta_pnl + vega_pnl + vanna_pnl + volga_pnl
+                 + dividend_pnl)
     residual = total_pnl - explained
 
     return AttributionResult(
         total_pnl=total_pnl, delta_pnl=delta_pnl, gamma_pnl=gamma_pnl,
         theta_pnl=theta_pnl, vega_pnl=vega_pnl, vanna_pnl=vanna_pnl,
-        volga_pnl=volga_pnl, residual=residual,
+        volga_pnl=volga_pnl, residual=residual, dividend_pnl=dividend_pnl,
     )

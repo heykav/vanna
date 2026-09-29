@@ -44,7 +44,8 @@ class BacktestResult:
 def run_backtest(strategy: str, s0: float, iv0: float, r: float, mu: float,
                   entry_dte: int, exit_dte: int, n_trades: int,
                   seed: int = 0, vol_of_vol: float = 0.01,
-                  iv_mean_reversion: float = 0.05, **strategy_params) -> BacktestResult:
+                  iv_mean_reversion: float = 0.05, q: float = 0.0,
+                  **strategy_params) -> BacktestResult:
     # This is the facade every entry point (CLI, GUI, browser demo) calls
     # with raw, unvalidated user input. Without checks here, a bad value
     # doesn't fail here with a clear message - it fails several calls deep
@@ -59,6 +60,8 @@ def run_backtest(strategy: str, s0: float, iv0: float, r: float, mu: float,
         raise ValueError(f"iv0 (entry IV) must be a positive finite number, got {iv0!r}")
     if not math.isfinite(r):
         raise ValueError(f"r (risk-free rate) must be a finite number, got {r!r}")
+    if not math.isfinite(q):
+        raise ValueError(f"q (continuous dividend yield) must be a finite number, got {q!r}")
     if not math.isfinite(mu):
         raise ValueError(f"mu (drift) must be a finite number, got {mu!r}")
     if entry_dte <= 0:
@@ -84,9 +87,9 @@ def run_backtest(strategy: str, s0: float, iv0: float, r: float, mu: float,
         if day + entry_dte >= len(spot_path):
             break
         entry_spot, entry_iv = spot_path[day], iv_path[day]
-        legs = strategy_fn(spot=entry_spot, r=r, iv=entry_iv, dte_days=entry_dte, **strategy_params)
+        legs = strategy_fn(spot=entry_spot, r=r, iv=entry_iv, dte_days=entry_dte, q=q, **strategy_params)
         held_days = entry_dte - exit_dte
-        entry_value = position_value(legs, entry_spot, r, entry_iv, elapsed_days=0)
+        entry_value = position_value(legs, entry_spot, r, entry_iv, elapsed_days=0, q=q)
 
         # Walk the trade day-by-day so attribution reflects the whole path,
         # not just start/end.
@@ -94,13 +97,13 @@ def run_backtest(strategy: str, s0: float, iv0: float, r: float, mu: float,
         for d in range(held_days):
             s_from, iv_from = spot_path[day + d], iv_path[day + d]
             s_to, iv_to = spot_path[day + d + 1], iv_path[day + d + 1]
-            step = attribute_pnl(legs, r, s_from, iv_from, d, s_to, iv_to, d + 1)
+            step = attribute_pnl(legs, r, s_from, iv_from, d, s_to, iv_to, d + 1, q)
             agg = step if agg is None else _add_attribution(agg, step)
 
         exit_day = day + held_days
         exit_spot, exit_iv = spot_path[exit_day], iv_path[exit_day]
-        exit_value = position_value(legs, exit_spot, r, exit_iv, elapsed_days=held_days)
-        pnl = exit_value - entry_value
+        exit_value = position_value(legs, exit_spot, r, exit_iv, elapsed_days=held_days, q=q)
+        pnl = exit_value - entry_value + agg.dividend_pnl
 
         trades.append(Trade(entry_day=day, exit_day=exit_day, legs=legs,
                              entry_spot=float(entry_spot), entry_iv=float(entry_iv),
@@ -123,4 +126,5 @@ def _add_attribution(a: AttributionResult, b: AttributionResult) -> AttributionR
         vanna_pnl=a.vanna_pnl + b.vanna_pnl,
         volga_pnl=a.volga_pnl + b.volga_pnl,
         residual=a.residual + b.residual,
+        dividend_pnl=a.dividend_pnl + b.dividend_pnl,
     )
