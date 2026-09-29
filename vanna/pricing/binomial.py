@@ -7,17 +7,25 @@ right before an ex-dividend date). A binomial tree prices that early-
 exercise right explicitly, by checking at every node whether exercising
 now is worth more than holding.
 
-Greeks here come from bumping the tree (finite difference on price), not
-from a closed form - there isn't a clean closed form once early exercise
-is in the mix. That's a real, disclosed trade-off, not an oversight: it
-costs a few extra tree evaluations per Greek, which is fine at this scale
-(a few thousand nodes), and would only start to matter if this were
-re-pricing a whole chain per millisecond.
+Greeks are read directly off the first two layers of the *same* tree
+that produces the price (Hull's method): delta from the two nodes at
+step 1, gamma from the three nodes at step 2, theta from the middle
+step-2 node (which sits at the spot again) against the root. There is no
+closed form once early exercise is in the mix. An earlier version bumped
+spot and time and re-priced the tree; that was ~7x slower and, because a
+tree price is a lattice function of spot, a bump much smaller than the
+node spacing gave very noisy gamma and theta (see docs/benchmarks.md).
+
+The backward induction is vectorised with numpy (one array operation per
+time step instead of a Python loop over every node); the algorithm and
+results are unchanged.
 """
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+
+import numpy as np
 
 from vanna.pricing.black_scholes import validate_option_inputs
 
@@ -30,9 +38,7 @@ class BinomialGreeks:
     theta: float
 
 
-def price_binomial(S: float, K: float, T: float, r: float, sigma: float,
-                    is_call: bool, q: float = 0.0, steps: int = 200,
-                    american: bool = True) -> float:
+def _tree(S, K, T, r, sigma, is_call, q, steps, american, keep_top=False):
     validate_option_inputs(S, K, T, sigma, r, q)
     if steps < 1:
         raise ValueError("steps must be >= 1")
@@ -46,43 +52,42 @@ def price_binomial(S: float, K: float, T: float, r: float, sigma: float,
             f"risk-neutral probability {p:.4f} out of (0,1) - steps too coarse "
             f"for these params (increase `steps`)"
         )
-
-    # Terminal payoffs across the final layer of the tree.
-    values = []
-    for i in range(steps + 1):
-        s_t = S * (u ** (steps - i)) * (d ** i)
-        payoff = max(s_t - K, 0.0) if is_call else max(K - s_t, 0.0)
-        values.append(payoff)
-
-    # Walk back through the tree; at each node, compare the discounted
-    # continuation value against immediate exercise (American only).
+    sign = 1.0 if is_call else -1.0
+    # Node i at layer n (i = number of down moves) has spot S * u**(n - 2i).
+    idx = np.arange(steps + 1)
+    values = np.maximum(sign * (S * u ** (steps - 2 * idx) - K), 0.0)
+    top = {}
     for step in range(steps - 1, -1, -1):
-        next_values = []
-        for i in range(step + 1):
-            continuation = disc * (p * values[i] + (1 - p) * values[i + 1])
-            if american:
-                s_t = S * (u ** (step - i)) * (d ** i)
-                intrinsic = max(s_t - K, 0.0) if is_call else max(K - s_t, 0.0)
-                next_values.append(max(continuation, intrinsic))
-            else:
-                next_values.append(continuation)
-        values = next_values
+        cont = disc * (p * values[:-1] + (1.0 - p) * values[1:])
+        if american:
+            spots = S * u ** (step - 2 * idx[: step + 1])
+            cont = np.maximum(cont, np.maximum(sign * (spots - K), 0.0))
+        values = cont
+        if keep_top and step <= 2:
+            top[step] = values
+    return float(values[0]), top, (u, d, dt)
 
-    return values[0]
+
+def price_binomial(S: float, K: float, T: float, r: float, sigma: float,
+                    is_call: bool, q: float = 0.0, steps: int = 200,
+                    american: bool = True) -> float:
+    return _tree(S, K, T, r, sigma, is_call, q, steps, american)[0]
 
 
 def greeks_binomial(S: float, K: float, T: float, r: float, sigma: float,
                      is_call: bool, q: float = 0.0, steps: int = 200,
                      american: bool = True) -> BinomialGreeks:
-    def px(spot, tenor):
-        return price_binomial(spot, K, tenor, r, sigma, is_call, q, steps, american)
-
-    base = px(S, T)
-    h_s = 1e-3 * S
-    delta = (px(S + h_s, T) - px(S - h_s, T)) / (2 * h_s)
-    gamma = (px(S + h_s, T) - 2 * base + px(S - h_s, T)) / (h_s ** 2)
-
-    h_t = min(1e-4, T * 0.01) if T > 1e-3 else T * 0.1
-    theta = -(px(S, T + h_t) - px(S, T - h_t)) / (2 * h_t)
-
-    return BinomialGreeks(price=base, delta=delta, gamma=gamma, theta=theta)
+    """Price, delta, gamma and theta from one tree. Theta is per year of
+    calendar time (same convention as `black_scholes.greeks`). Needs
+    `steps >= 2` (gamma uses the step-2 layer)."""
+    if steps < 2:
+        raise ValueError("steps must be >= 2 to compute tree Greeks")
+    base, top, (u, d, dt) = _tree(S, K, T, r, sigma, is_call, q, steps, american, keep_top=True)
+    f1, f2 = top[1], top[2]  # index = number of down moves
+    su, sd = S * u, S * d
+    suu, sdd = S * u * u, S * d * d
+    delta = (f1[0] - f1[1]) / (su - sd)
+    gamma = (((f2[0] - f2[1]) / (suu - S) - (f2[1] - f2[2]) / (S - sdd))
+             / (0.5 * (suu - sdd)))
+    theta = (f2[1] - base) / (2.0 * dt)
+    return BinomialGreeks(price=base, delta=float(delta), gamma=float(gamma), theta=float(theta))
