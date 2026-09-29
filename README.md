@@ -99,7 +99,8 @@ theta/vega/vanna/volga exactly rather than leaking into them.
 Ten, not thirty-eight - implemented and tested properly rather than
 templated out: `long_call`, `short_call`, `long_put`, `short_put`,
 `long_straddle`, `short_straddle`, `long_call_spread`,
-`short_call_spread`, `iron_condor`, `covered_call`. Strikes are selected
+`short_call_spread`, `iron_condor`, `covered_call` (long one share plus a short OTM call; the stock leg is
+priced at spot and attributed entirely to delta). Strikes are selected
 by delta target against the model's own Black-Scholes surface, not
 picked from a real chain (see below).
 
