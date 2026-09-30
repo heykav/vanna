@@ -1,8 +1,13 @@
 """Sequential strategy backtest over a simulated underlying+IV path.
 
-One trade is open at a time: enter at `entry_dte`, exit at `exit_dte`
-calendar days later or at expiry, whichever comes first, then
-immediately look to enter the next trade. Every trade's P&L is broken
+One trade is open at a time: enter with `entry_dte` days to expiry, hold
+until `exit_dte` days remain (so `entry_dte - exit_dte` days; `exit_dte=0`
+holds to expiry), then enter the next trade on the same day's close.
+"Days" are simulated trading days throughout: the path has one step per
+trading day and every time-to-expiry is `days / 252` years, so theta
+(per year) times `days / 252` is consistent with how the options are
+priced. Strikes for each trade are chosen from the entry day's spot and
+IV only; nothing after the entry day is visible to the strategy. Every trade's P&L is broken
 down by Greek via `attribution.attribute_pnl`, summed day-by-day across
 the trade's life (not just entry-to-exit in one shot), so a trade that
 whipsaws - up then down - gets its P&L attributed correctly across each

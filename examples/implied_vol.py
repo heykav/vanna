@@ -12,8 +12,8 @@ market_price = price(S, K, T, r, true_sigma, is_call=True)
 iv = implied_vol(market_price, S, K, T, r, is_call=True)
 print(f"price {market_price:.4f} -> implied vol {iv:.6f} (input vol was {true_sigma})")
 
-# Low-vega case (deep out of the money, one week): Newton is unreliable, the
-# solver falls back to bisection.
+# Low-vega case (deep out of the money, one week): plain Newton on price is
+# unreliable here; the solver keeps a bracket and steps on ln(price).
 far = price(100.0, 130.0, 7 / 365, 0.03, 0.40, is_call=True)
 print(f"deep OTM call price {far:.2e} -> implied vol "
       f"{implied_vol(far, 100.0, 130.0, 7 / 365, 0.03, is_call=True):.6f} (input 0.4)")

@@ -22,6 +22,7 @@ from dataclasses import dataclass
 
 
 _SQRT_2PI = math.sqrt(2.0 * math.pi)
+_SQRT_2 = math.sqrt(2.0)
 
 
 def _phi(x: float) -> float:
@@ -30,8 +31,16 @@ def _phi(x: float) -> float:
 
 
 def _norm_cdf(x: float) -> float:
-    """Standard normal CDF via erf (no scipy dependency for the core)."""
-    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+    """Standard normal CDF via erfc (no scipy dependency for the core).
+
+    ``0.5 * erfc(-x / sqrt(2))`` rather than ``0.5 * (1 + erf(x / sqrt(2)))``:
+    the erf form computes ``1 + (a number close to -1)`` in the left tail, so
+    it loses all relative precision there and returns exactly 0.0 for
+    x < about -8.3. The erfc form keeps full relative precision down to
+    x ~ -37, which is what lets deep out-of-the-money prices (and their
+    implied vols) be computed at all instead of collapsing to zero.
+    """
+    return 0.5 * math.erfc(-x / _SQRT_2)
 
 
 def validate_option_inputs(S: float, K: float, T: float, sigma: float,
@@ -84,6 +93,17 @@ def price(S: float, K: float, T: float, r: float, sigma: float, is_call: bool, q
     return K * math.exp(-r * T) * _norm_cdf(-d2) - S * math.exp(-q * T) * _norm_cdf(-d1)
 
 
+def delta(S: float, K: float, T: float, r: float, sigma: float, is_call: bool, q: float = 0.0) -> float:
+    """Delta alone - the same value as ``greeks(...).delta``, without
+    computing every other Greek. Used where only delta is needed in a loop
+    (strike selection by target delta)."""
+    d1, _ = _d1_d2(S, K, T, r, q, sigma)
+    disc_q = math.exp(-q * T)
+    if is_call:
+        return disc_q * _norm_cdf(d1)
+    return -disc_q * _norm_cdf(-d1)
+
+
 def greeks(S: float, K: float, T: float, r: float, sigma: float, is_call: bool, q: float = 0.0) -> Greeks:
     d1, d2 = _d1_d2(S, K, T, r, q, sigma)
     disc_q = math.exp(-q * T)
@@ -102,7 +122,7 @@ def greeks(S: float, K: float, T: float, r: float, sigma: float, is_call: bool, 
         rho = K * T * disc_r * _norm_cdf(d2)
     else:
         px = K * disc_r * _norm_cdf(-d2) - S * disc_q * _norm_cdf(-d1)
-        delta = disc_q * (_norm_cdf(d1) - 1.0)
+        delta = -disc_q * _norm_cdf(-d1)  # == disc_q * (N(d1) - 1), without the cancellation
         theta = (
             -S * disc_q * pdf_d1 * sigma / (2 * sqrt_t)
             + r * K * disc_r * _norm_cdf(-d2)

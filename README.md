@@ -36,8 +36,9 @@ from first principles and for backtesting option strategies with the P&L
 broken down by Greek.
 
 - Black-Scholes-Merton price and Greeks (delta, gamma, vega, theta, rho,
-  plus vanna and volga), a Cox-Ross-Rubinstein binomial tree for American
-  exercise, and an implied-vol solver.
+  plus vanna and volga), binomial trees for American exercise
+  (Cox-Ross-Rubinstein, or Leisen-Reimer for faster convergence), and a
+  bracketed implied-vol solver.
 - A sequential strategy backtester (ten strategies) whose trades are
   attributed to delta, gamma, theta, vega, vanna, volga, dividends, and an
   explicit residual.
@@ -169,21 +170,43 @@ Black-Scholes fits any market.*
   the lower-order terms. A transposed d1/d2 or a wrong sign in a formula
   copied from a textbook is an easy, quiet way to ship something subtly
   wrong; this way the tests catch it, not a user's P&L six months later.
-- **Binomial tree** (`vanna.pricing.binomial`): Cox-Ross-Rubinstein tree
-  for American-style exercise, which Black-Scholes structurally can't
-  price. Verified to converge to Black-Scholes in the European limit, and
+  `tests/test_greeks_fd_grid.py` repeats the check for all seven Greeks
+  directly against the *price* over 360 points including two-day expiries,
+  3% and 150% vol, deep ITM/OTM strikes, negative rates and a dividend
+  yield. The normal CDF uses `erfc`, so deep out-of-the-money prices keep
+  full relative precision instead of underflowing to zero
+  (`tests/test_numerical_precision.py` pins values computed with mpmath).
+- **Binomial tree** (`vanna.pricing.binomial`): Cox-Ross-Rubinstein
+  (default) or Leisen-Reimer (`method="lr"`) tree for American-style
+  exercise, which Black-Scholes structurally can't price. At 201 steps the
+  measured worst-case European error is 3.7e-2 for CRR and 3.7e-5 for LR,
+  at the same cost per step (chart below). No-arbitrage properties
+  (bounds, American put-call parity inequality, monotonicity in spot and
+  vol, convexity in strike) are tested for both. Verified to converge to Black-Scholes in the European limit, and
   to reproduce the textbook result that a deep-ITM American put is worth
   strictly more than its European counterpart (the early-exercise
   premium is a real, checkable number, not just a bigger number).
-- **Implied volatility** (`vanna.pricing.implied_vol`): Newton-Raphson
-  using vega as the derivative, falling back to bisection when vega is
-  near zero (deep ITM/OTM, or close to expiry) and Newton would otherwise
-  diverge or oscillate. Building this caught a real bug: the initial
+- **Implied volatility** (`vanna.pricing.implied_vol`): safeguarded
+  Newton-Raphson that keeps a bracket around the root and bisects whenever
+  a Newton step would leave it, so it cannot diverge when vega is near zero
+  (deep ITM/OTM, or close to expiry). Prices outside the no-arbitrage
+  bounds, or with no time value, raise `ImpliedVolError` saying which bound
+  was violated. On a 4,536-point grid (1-day to 5-year expiries, 1% to 400%
+  vol) every well-posed point is recovered to within 10x of what the
+  price's own rounding error allows. Building this caught a real bug: the initial
   no-arbitrage floor used undiscounted intrinsic value (`K - S`), which
   is wrong for a European option - with enough time value of money, a
   correct European put price can trade *below* `K - S` and still be
   perfectly arbitrage-free. Fixed to use the properly discounted floor
   after a deep-ITM, long-dated test case caught it failing.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/convergence-dark.png">
+  <img src="docs/img/convergence-light.png" alt="Log-log chart of maximum price error against tree steps from 25 to 801: for European options Leisen-Reimer's error falls from 2.3e-3 to 2.3e-6 while CRR's falls from 0.29 to 9.4e-3; for American options Leisen-Reimer is 3 to 4 times more accurate than CRR at every step count" width="900">
+</picture>
+
+*Max error over the grids in [docs/benchmarks.md](docs/benchmarks.md#tree-convergence-and-implied-vol-robustness),
+measured by `benchmarks/bench_trees.py`.*
 
 ## Strategies
 
@@ -239,8 +262,11 @@ pytest -q
 
 The test suite covers: closed-form Greeks against finite differences and a textbook
 reference price, the binomial tree against Black-Scholes convergence and
-known early-exercise behavior, the IV solver recovering known vols
-(including the low-vega cases that force the bisection fallback), the
+known early-exercise behavior, no-arbitrage properties of both trees, the
+IV solver's round trip over a wide grid (including the low-vega cases
+where plain Newton fails) and its no-arbitrage errors, the backtest's
+absence of lookahead (perturbing the future path leaves earlier trades
+bit-identical), the
 attribution math's residual-shrinks-cubically property, full end-to-end
 backtest determinism/consistency checks, and input validation across
 every entry point. No GUI test automation yet - the GUI was verified by
