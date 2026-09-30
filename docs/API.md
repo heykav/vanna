@@ -22,15 +22,19 @@ Frozen dataclass. `vega` and `rho` are per 1.00 change (divide by 100 for per 1%
 
 Raises a specific `ValueError` for the first invalid input. Used by every pricing entry point.
 
+#### `vanna.pricing.black_scholes.delta(S: float, K: float, T: float, r: float, sigma: float, is_call: bool, q: float = 0.0) -> float`
+
+Delta alone; identical to `greeks(...).delta` but cheaper when nothing else is needed.
+
 ## Pricing: binomial tree (American)
 
-Cox-Ross-Rubinstein tree with early exercise. Greeks come from the first layers of the same tree; `theta` is per year. `steps` trades accuracy for time (see [benchmarks](benchmarks.md)).
+Binomial tree with early exercise. `method="crr"` (default) is Cox-Ross-Rubinstein; `method="lr"` is Leisen-Reimer (Peizer-Pratt method 2), which is only defined for an odd step count, so an even `steps` is rounded up by one. Greeks come from the first layers of the same tree; `theta` is per year. `steps` trades accuracy for time (see [benchmarks](benchmarks.md) for the measured error per step count of both methods).
 
-#### `vanna.pricing.binomial.price_binomial(S: float, K: float, T: float, r: float, sigma: float, is_call: bool, q: float = 0.0, steps: int = 200, american: bool = True) -> float`
+#### `vanna.pricing.binomial.price_binomial(S: float, K: float, T: float, r: float, sigma: float, is_call: bool, q: float = 0.0, steps: int = 200, american: bool = True, method: str = 'crr') -> float`
 
 Tree price. `american=False` gives the European tree, which converges to Black-Scholes-Merton. Raises `ValueError` if `steps` is too coarse for the parameters (risk-neutral probability outside (0, 1)).
 
-#### `vanna.pricing.binomial.greeks_binomial(S: float, K: float, T: float, r: float, sigma: float, is_call: bool, q: float = 0.0, steps: int = 200, american: bool = True) -> vanna.pricing.binomial.BinomialGreeks`
+#### `vanna.pricing.binomial.greeks_binomial(S: float, K: float, T: float, r: float, sigma: float, is_call: bool, q: float = 0.0, steps: int = 200, american: bool = True, method: str = 'crr') -> vanna.pricing.binomial.BinomialGreeks`
 
 Price, delta, gamma and theta from one tree. Requires `steps >= 2`.
 
@@ -40,11 +44,15 @@ Frozen dataclass returned by `greeks_binomial`.
 
 ## Pricing: implied volatility
 
-Newton-Raphson with a bisection fallback when vega is near zero.
+Safeguarded Newton-Raphson: a bracket in sigma that always contains the root is kept, and any Newton step that would leave it is replaced by a bisection step, so the iteration cannot diverge when vega is near zero. ITM prices are converted by put-call parity to the equivalent OTM price, and below the inflection point of price(sigma) the Newton step is taken on ln(price), which converges in far fewer steps in the low-vega wings. The default start is that inflection point (Manaster-Koehler, `sqrt(2|ln(F/K)|/T)`).
 
-#### `vanna.pricing.implied_vol.implied_vol(market_price: float, S: float, K: float, T: float, r: float, is_call: bool, q: float = 0.0, initial_guess: float = 0.3, newton_tol: float = 1e-08, newton_max_iter: int = 50, bisection_bounds: tuple[float, float] = (0.0001, 5.0), bisection_tol: float = 1e-10, bisection_max_iter: int = 100) -> float`
+#### `vanna.pricing.implied_vol.implied_vol(market_price: float, S: float, K: float, T: float, r: float, is_call: bool, q: float = 0.0, initial_guess: float | None = None, newton_tol: float = 1e-08, newton_max_iter: int = 50, bisection_bounds: tuple[float, float] = (0.0001, 5.0), bisection_tol: float = 1e-10, bisection_max_iter: int = 100) -> float`
 
-Solve for sigma given a market price. Raises `ImpliedVolError` if the price is below the discounted no-arbitrage floor or no sigma in `bisection_bounds` reproduces it. `bisection_tol` is a tolerance on the width of the sigma bracket.
+Solve for sigma given a market price. Raises `ImpliedVolError` if the price is outside the no-arbitrage bounds (below the discounted intrinsic value, equal to it, i.e. no time value, or at/above `S*exp(-qT)` for a call or `K*exp(-rT)` for a put), or if the implied vol lies outside `bisection_bounds` (the message says which side). Stops when the Newton step is below 1e-9 in sigma (that final step is applied, so the error is of order its square) with a price residual below `newton_tol`, or when the bracket is narrower than `bisection_tol`.
+
+#### `vanna.pricing.implied_vol.no_arbitrage_bounds(S: float, K: float, T: float, r: float, is_call: bool, q: float = 0.0) -> tuple[float, float]`
+
+`(lower, upper)` model-free bounds on a European option price used by `implied_vol`.
 
 #### `vanna.pricing.implied_vol.ImpliedVolError`
 
@@ -68,7 +76,7 @@ One completed trade with its legs, entry/exit values, `pnl` and a summed `Attrib
 
 #### `vanna.backtest.metrics.summarize(result: vanna.backtest.engine.BacktestResult) -> vanna.backtest.metrics.PerformanceSummary`
 
-Win rate, profit factor, total P&L, max drawdown, average P&L per trade, as a `PerformanceSummary`.
+Win rate, profit factor, total P&L, max drawdown, average P&L per trade, as a `PerformanceSummary`. Max drawdown is measured on the closed-trade equity curve (one point per trade), so a drawdown that opens and recovers within a single trade is not counted.
 
 #### `vanna.backtest.metrics.PerformanceSummary(n_trades: int, win_rate: float, profit_factor: float, total_pnl: float, max_drawdown: float, avg_pnl: float)`
 
@@ -100,7 +108,7 @@ Mean-reverting daily IV path, floored at `floor`.
 
 #### `vanna.backtest.chain.price_leg(spot: float, strike: float, dte_days: int, r: float, iv: float, is_call: bool, q: float = 0.0) -> float`
 
-Black-Scholes-Merton price of one option leg with `dte_days` calendar days (converted to years with 252 trading days per year); intrinsic value at or past expiry.
+Black-Scholes-Merton price of one option leg with `dte_days` trading days to expiry (converted to years as `dte_days / 252`; the simulated path has one step per trading day); intrinsic value at or past expiry.
 
 #### `vanna.backtest.chain.leg_greeks(spot: float, strike: float, dte_days: int, r: float, iv: float, is_call: bool, q: float = 0.0)`
 
