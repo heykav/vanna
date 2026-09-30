@@ -7,15 +7,14 @@ Deterministic: fixed seed, no network, no market data. Nothing is drawn by
 hand; every number comes from one of
   * vanna.backtest.engine.run_backtest (attribution waterfall, payoff),
   * vanna.pricing.black_scholes.price (hero curves),
-  * the tables in docs/benchmarks.md (accuracy; parsed, not retyped), which
-    were measured by benchmarks/bench_reference.py against QuantLib and
-    py_vollib. QuantLib and py_vollib are NOT needed to run this script.
+  * the tables in docs/benchmarks.md (accuracy and tree convergence;
+    parsed, not retyped), which were measured by benchmarks/bench_reference.py
+    against QuantLib and py_vollib and by benchmarks/bench_trees.py. QuantLib and py_vollib are NOT needed to run this script.
 matplotlib is a figure-only dependency (already in the `gui` extra); the
 library itself depends only on numpy.
 """
 from __future__ import annotations
 
-import math
 import re
 import sys
 from pathlib import Path
@@ -25,7 +24,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
-from matplotlib.ticker import FuncFormatter  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -204,6 +202,59 @@ def fig_accuracy(theme):
     fig.savefig(OUT / f"accuracy-{theme}.png"); plt.close(fig)
 
 
+# Two-series palette for the convergence chart, validated per theme with the
+# dataviz palette checker (lightness band, CVD separation, contrast).
+SERIES = {"dark": {"crr": "#c4861c", "lr": "#5a90e0"},
+          "light": {"crr": "#a86a00", "lr": "#2a62c9"}}
+
+
+def parse_convergence(title_prefix):
+    """Rows `| steps | CRR max | CRR mean | LR max | LR mean |` of the table
+    under the heading starting with `title_prefix` in docs/benchmarks.md."""
+    lines = (ROOT / "docs" / "benchmarks.md").read_text().splitlines()
+    start = next(i for i, l in enumerate(lines) if l.startswith("#### " + title_prefix))
+    rows, pat = [], re.compile(r"^\| (\d+) \| ([\d.e+-]+) \| ([\d.e+-]+) \| ([\d.e+-]+) \| ([\d.e+-]+) \|$")
+    for line in lines[start + 1:]:
+        if line.startswith("#"):
+            break
+        m = pat.match(line)
+        if m:
+            rows.append([float(g) for g in m.groups()])
+    assert rows, title_prefix
+    return np.array(rows)
+
+
+def fig_convergence(theme):
+    t = THEMES[theme]; style(t); c = SERIES[theme]
+    eu = parse_convergence("European price error")
+    am = parse_convergence("American price error")
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4.6), dpi=200, gridspec_kw=dict(wspace=0.28))
+    for ax, data, title in ((axes[0], eu, "European (vs closed form), 480 points"),
+                            (axes[1], am, "American (vs 4,001-step LR), 72 points")):
+        n = data[:, 0]
+        ax.plot(n, data[:, 1], color=c["crr"], lw=2, ls="--", marker="o", ms=5, label="CRR", zorder=3)
+        ax.plot(n, data[:, 3], color=c["lr"], lw=2, marker="s", ms=5, label="Leisen-Reimer", zorder=3)
+        ax.set_xscale("log"); ax.set_yscale("log")
+        ax.set_xticks(n); ax.set_xticklabels([f"{int(v)}" for v in n])
+        ax.minorticks_off()
+        ax.set_xlabel("Tree steps")
+        ax.set_title(title, loc="left", fontsize=10.5, pad=8)
+        ax.set_xlim(n[0] / 1.25, n[-1] * 2.1)  # room for the end labels
+        for col in (1, 3):
+            ax.annotate(f"{data[-1, col]:.1e}", (n[-1], data[-1, col]), xytext=(7, 0),
+                        textcoords="offset points", ha="left", va="center", fontsize=8.5,
+                        color=t["text"])
+    axes[0].set_ylabel("Max absolute price error (log scale)")
+    axes[0].legend(loc="lower left", fontsize=9)
+    fig.suptitle("Binomial tree error vs step count", x=0.06, ha="left",
+                 fontsize=13.5, fontweight="bold", y=0.985)
+    fig.text(0.06, 0.012, "Source: docs/benchmarks.md, measured by benchmarks/bench_trees.py "
+             "(S=100, grids listed there). Max over the grid; lower is better.",
+             fontsize=7.8, color=t["muted"], ha="left")
+    fig.subplots_adjust(left=0.09, right=0.98, top=0.83, bottom=0.14)
+    fig.savefig(OUT / f"convergence-{theme}.png"); plt.close(fig)
+
+
 def hero_svg(theme):
     t = THEMES[theme]
     accent = "#00ff66" if theme == "dark" else "#0a8f45"
@@ -251,7 +302,7 @@ def fig_social(tr):
     fig.add_artist(plt.Rectangle((0.052, 0.665), 0.06, 0.012, color="#00ff66", transform=fig.transFigure))
     fig.text(0.05, 0.575, "Options pricing, Greeks and backtesting", fontsize=17, color=t["text"])
     fig.text(0.05, 0.515, "with every trade's P&L attributed to its Greeks.", fontsize=17, color=t["text"])
-    fig.text(0.05, 0.44, "Black-Scholes-Merton  |  CRR binomial (American)\nImplied vol  |  ten option strategies\n"
+    fig.text(0.05, 0.44, "Black-Scholes-Merton  |  CRR and Leisen-Reimer trees (American)\nImplied vol  |  ten option strategies\n"
              "Checked against QuantLib and py_vollib", fontsize=13.5, color=t["muted"], linespacing=1.7, va="top")
     fig.text(0.05, 0.075, "github.com/heykav/vanna", fontsize=14, color=t["muted"], family="DejaVu Sans Mono")
     ax = fig.add_axes([0.56, 0.20, 0.41, 0.60])
@@ -269,6 +320,7 @@ def main():
         fig_attribution(theme, tr)
         fig_payoff(theme, tr)
         fig_accuracy(theme)
+        fig_convergence(theme)
     fig_social(tr)
     print("wrote", ", ".join(sorted(p.name for p in OUT.iterdir())))
 
