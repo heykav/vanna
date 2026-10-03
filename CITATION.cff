@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+title: "vanna"
+abstract: "A model-driven options pricing, Greeks, and backtesting library with Greek-attributed P&L."
+type: software
+authors:
+  - family-names: "Anubhav"
+    given-names: "Krishna"
+    alias: "heykav"
+repository-code: "https://github.com/heykav/vanna"
+url: "https://heykav.github.io/vanna/"
+license: MIT
+keywords:
+  - options pricing
+  - Black-Scholes
+  - Greeks
+  - backtesting
