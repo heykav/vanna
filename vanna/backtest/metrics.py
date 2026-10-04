@@ -19,6 +19,9 @@ class PerformanceSummary:
 
 
 def summarize(result: BacktestResult) -> PerformanceSummary:
+    """Summary statistics over closed trades. `max_drawdown` is measured on
+    the closed-trade equity curve (one point per trade), so a drawdown that
+    opens and recovers inside a single trade is not included."""
     trades = result.trades
     n = len(trades)
     if n == 0:

@@ -81,13 +81,13 @@ class MainWindow(QMainWindow):
         self.entry_dte_box = QSpinBox()
         self.entry_dte_box.setRange(2, 365)
         self.entry_dte_box.setValue(30)
-        self.entry_dte_box.setToolTip("Days to expiration when each trade is opened.")
+        self.entry_dte_box.setToolTip("Trading days to expiration when each trade is opened.")
         form.addRow("Entry DTE", self.entry_dte_box)
 
         self.exit_dte_box = QSpinBox()
         self.exit_dte_box.setRange(0, 364)
         self.exit_dte_box.setValue(10)
-        self.exit_dte_box.setToolTip("Days to expiration when each trade is closed (0 = hold to expiry). Must be less than Entry DTE.")
+        self.exit_dte_box.setToolTip("Trading days to expiration when each trade is closed (0 = hold to expiry). Must be less than Entry DTE.")
         form.addRow("Exit DTE", self.exit_dte_box)
 
         self.n_trades_box = QSpinBox()

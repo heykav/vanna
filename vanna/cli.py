@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 
 from vanna.backtest.engine import run_backtest
 from vanna.backtest.metrics import summarize
 from vanna.backtest.strategies import STRATEGIES
+from vanna.backtest.serialize import backtest_result_to_dict
 
 
 def main(argv=None):
@@ -22,6 +24,11 @@ def main(argv=None):
     parser.add_argument("--exit-dte", type=int, default=10)
     parser.add_argument("--trades", type=int, default=20)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output machine-readable JSON instead of human-readable summary",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -34,9 +41,29 @@ def main(argv=None):
         return 1
 
     if not result.trades:
-        print("No trades fit in the simulated window - try --trades lower or --entry-dte shorter.")
+        print("No trades fit in the simulated window - try --trades lower or --entry-dte shorter.",
+              file=sys.stderr if args.json else sys.stdout)
         return 1
 
+    if args.json:
+        # Output JSON-only to stdout
+        data = backtest_result_to_dict(
+            result,
+            strategy=args.strategy,
+            s0=args.spot,
+            iv0=args.iv,
+            r=args.rate,
+            q=args.div_yield,
+            mu=args.drift,
+            entry_dte=args.entry_dte,
+            exit_dte=args.exit_dte,
+            n_trades=args.trades,
+            seed=args.seed,
+        )
+        print(json.dumps(data, allow_nan=False))
+        return 0
+
+    # Default human-readable output
     summary = summarize(result)
     print(f"Strategy:       {args.strategy}")
     print(f"Trades:         {summary.n_trades}")

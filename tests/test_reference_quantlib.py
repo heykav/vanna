@@ -73,3 +73,24 @@ def test_american_binomial_matches_quantlib_crr(K, sigma, r, days, q, is_call):
     assert g.delta == pytest.approx(opt.delta(), abs=1e-3)
     assert g.gamma == pytest.approx(opt.gamma(), abs=1e-3)
     assert price_binomial(S, K, days / 365.0, r, sigma, is_call, q, steps) == pytest.approx(g.price)
+
+
+@pytest.mark.parametrize("K,sigma,r,days,q,is_call",
+                         [(90.0, 0.3, 0.04, 180, 0.0, False), (100.0, 0.3, 0.04, 365, 0.03, True),
+                          (110.0, 0.2, 0.04, 90, 0.0, False), (100.0, 0.4, 0.05, 180, 0.0, True)])
+@pytest.mark.parametrize("american", [True, False])
+def test_leisen_reimer_matches_quantlib_lr(K, sigma, r, days, q, is_call, american):
+    # 1001 steps: measured agreement ~2e-10 over a 288-point grid. (At some
+    # other step counts QuantLib 1.43's *American* LR price differs by up to
+    # 0.06 and can fall below its own European price for a no-dividend call,
+    # which is not arbitrage-free, so those are not used as a reference.)
+    S, steps = 100.0, 1001
+    exercise = (ql.AmericanExercise(TODAY, TODAY + days) if american
+                else ql.EuropeanExercise(TODAY + days))
+    opt = ql.VanillaOption(
+        ql.PlainVanillaPayoff(ql.Option.Call if is_call else ql.Option.Put, K), exercise)
+    opt.setPricingEngine(ql.BinomialVanillaEngine(_process(S, r, q, sigma), "lr", steps))
+    g = greeks_binomial(S, K, days / 365.0, r, sigma, is_call, q, steps, american, "lr")
+    assert g.price == pytest.approx(opt.NPV(), abs=1e-8)
+    assert g.delta == pytest.approx(opt.delta(), abs=1e-9)
+    assert g.gamma == pytest.approx(opt.gamma(), abs=1e-9)

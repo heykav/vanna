@@ -19,7 +19,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from vanna.pricing.black_scholes import price as bs_price, greeks as bs_greeks
+from vanna.pricing.black_scholes import price as bs_price, greeks as bs_greeks, delta as bs_delta
 
 
 TRADING_DAYS_PER_YEAR = 252
@@ -84,7 +84,7 @@ def nearest_strike(spot: float, target_delta: float, dte_days: int, r: float,
     candidates = np.arange(spot * 0.5, spot * 1.5, strike_step)
     best_strike, best_diff = None, float("inf")
     for k in candidates:
-        d = bs_greeks(spot, float(k), T, r, iv, is_call, q).delta
+        d = bs_delta(spot, float(k), T, r, iv, is_call, q)
         diff = abs(abs(d) - abs(target_delta))
         if diff < best_diff:
             best_strike, best_diff = float(k), diff
