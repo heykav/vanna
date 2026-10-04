@@ -335,3 +335,19 @@ without copyleft obligations.
 ---
 
 Made with ❤️ in India by [Krishna Anubhav](https://github.com/heykav).
+
+## Machine-readable backtests
+
+```sh
+vanna iron_condor --seed 42 --trades 20 --json > report.json
+```
+
+`--json` writes one strict JSON object to stdout: schema version, all CLI input
+parameters, summary, equity curve and individual trades with Greek attribution,
+dividend P&L and residual. Errors go to stderr with a nonzero exit status.
+Non-finite numbers are `null`; the same seed and options produce identical output
+within the same software environment. Without `--json`, the human summary is unchanged.
+
+This is a simulation, not historical market data or live performance. Values are
+per share; a standard equity option contract usually represents 100 shares.
+The export does not pin dependencies or guarantee identical results across versions.
