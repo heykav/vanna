@@ -116,6 +116,13 @@ instead of it.
 
 ## What's actually novel here: Greek-attributed P&L
 
+<p align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/how-it-works-dark.svg">
+  <img src="docs/img/how-it-works-light.svg" alt="Five steps: inputs, synthetic stock and IV path, price the legs, trade P&amp;L, attribute to the Greeks plus an explicit residual" width="900">
+</picture>
+</p>
+
 Every trade's profit or loss gets decomposed via a second-order Taylor
 expansion of option value in (spot, vol, time):
 

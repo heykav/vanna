@@ -104,3 +104,13 @@ footer a { color: var(--accent); }
   header { padding: 14px 16px; }
   #controls { min-width: 0; }
 }
+
+.hero, .how { max-width: 1400px; margin: 20px auto 0; padding: 0 20px; }
+.hero img, .how img { width: 100%; height: auto; display: block; border-radius: 14px; }
+.how { padding-bottom: 20px; }
+.disclaimer { max-width: 1400px; margin: 0 auto; padding: 0 20px 8px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.disclaimer strong { color: var(--text); }
+@media (prefers-color-scheme: light) {
+  :root { --bg: #F4F5F2; --panel: #eceeea; --border: #c4c7c0; --text: #111211; --muted: #54564f; --accent: #00A84A; --red: #c62828; }
+  button#run { color: #fff; }
+}
