@@ -1,0 +1,39 @@
+<svg width="1200" height="400" viewBox="0 0 1200 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t d">
+<title id="t">How vanna works</title>
+<desc id="d">Five steps: inputs, a synthetic stock and implied-vol path, pricing each option leg with Black-Scholes or a binomial tree, trade profit and loss, then attribution of that P&amp;L to delta, gamma, theta, vega, vanna, volga and an explicit residual.</desc>
+<defs><pattern id="g" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#1a1b19"/></pattern><clipPath id="k"><rect width="1200" height="400" rx="14"/></clipPath></defs>
+<g clip-path="url(#k)">
+<rect width="1200" height="400" fill="#0d0e0c"/><rect width="1200" height="400" fill="url(#g)"/>
+<rect width="1200" height="40" fill="#161715"/><path d="M0 40H1200" stroke="#2a2c28"/>
+<circle cx="24" cy="20" r="6" fill="#ff5f57"/><circle cx="44" cy="20" r="6" fill="#febc2e"/><circle cx="64" cy="20" r="6" fill="#28c840"/>
+<text x="92" y="25" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="13" fill="#9a9c96">vanna: how it works</text>
+<text x="40" y="92" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="13" letter-spacing="2.4" fill="#00FF66">FROM INPUTS TO GREEK-ATTRIBUTED P&amp;L</text>
+<rect x="40" y="128" width="196" height="112" rx="10" fill="#161715" stroke="#2a2c28" stroke-width="1"/>
+<text x="56" y="160" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="13" font-weight="700" fill="#F4F5F2">1  INPUTS</text>
+<text x="56" y="192" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="12" fill="#9a9c96">spot, IV, rate,</text>
+<text x="56" y="212" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="12" fill="#9a9c96">drift, DTE, seed</text>
+<path d="M242 184H268" stroke="#9a9c96" stroke-width="1.6"/><path d="M262 178L268 184L262 190" fill="none" stroke="#9a9c96" stroke-width="1.6"/>
+<rect x="276" y="128" width="196" height="112" rx="10" fill="#161715" stroke="#2a2c28" stroke-width="1"/>
+<text x="292" y="160" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="13" font-weight="700" fill="#F4F5F2">2  SYNTHETIC PATH</text>
+<text x="292" y="192" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="12" fill="#9a9c96">GBM stock path,</text>
+<text x="292" y="212" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="12" fill="#9a9c96">mean-reverting IV</text>
+<path d="M478 184H504" stroke="#9a9c96" stroke-width="1.6"/><path d="M498 178L504 184L498 190" fill="none" stroke="#9a9c96" stroke-width="1.6"/>
+<rect x="512" y="128" width="196" height="112" rx="10" fill="#161715" stroke="#2a2c28" stroke-width="1"/>
+<text x="528" y="160" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="13" font-weight="700" fill="#F4F5F2">3  PRICE THE LEGS</text>
+<text x="528" y="192" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="12" fill="#9a9c96">Black-Scholes, or CRR</text>
+<text x="528" y="212" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="12" fill="#9a9c96">tree for American</text>
+<path d="M714 184H740" stroke="#9a9c96" stroke-width="1.6"/><path d="M734 178L740 184L734 190" fill="none" stroke="#9a9c96" stroke-width="1.6"/>
+<rect x="748" y="128" width="196" height="112" rx="10" fill="#161715" stroke="#2a2c28" stroke-width="1"/>
+<text x="764" y="160" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="13" font-weight="700" fill="#F4F5F2">4  TRADE P&amp;L</text>
+<text x="764" y="192" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="12" fill="#9a9c96">open at entry DTE,</text>
+<text x="764" y="212" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="12" fill="#9a9c96">close at exit DTE</text>
+<path d="M950 184H976" stroke="#9a9c96" stroke-width="1.6"/><path d="M970 178L976 184L970 190" fill="none" stroke="#9a9c96" stroke-width="1.6"/>
+<rect x="984" y="128" width="196" height="112" rx="10" fill="#161715" stroke="#00FF66" stroke-width="1.6"/>
+<text x="1000" y="160" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="13" font-weight="700" fill="#F4F5F2">5  ATTRIBUTE</text>
+<text x="1000" y="192" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="12" fill="#9a9c96">delta gamma theta vega</text>
+<text x="1000" y="212" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="12" fill="#9a9c96">vanna volga + residual</text>
+<text x="40" y="288" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="12" fill="#B6FF2E">Whatever the Taylor terms do not explain is reported as "residual", never folded into a Greek.</text>
+<text x="40" y="312" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="12" fill="#9a9c96">Synthetic paths only: no market-data loader. Results are as realistic as the model, not more.</text>
+<circle cx="60" cy="116" r="4.5" fill="#B6FF2E"><animate attributeName="cx" values="60;1140" dur="7s" repeatCount="indefinite"/></circle>
+<style>@media (prefers-reduced-motion:reduce){*{animation:none!important}}</style>
+</g><rect x=".5" y=".5" width="1199" height="399" rx="14" fill="none" stroke="#2a2c28"/></svg>

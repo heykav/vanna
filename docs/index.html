@@ -15,7 +15,7 @@
 <meta property="og:description" content="Real Black-Scholes/binomial options pricing and Greek-attributed P&amp;L backtesting, running live in your browser via Pyodide — not a JS reimplementation." />
 <meta property="og:image" content="https://heykav.github.io/vanna/og-image.png" />
 <meta property="og:image:width" content="1280" />
-<meta property="og:image:height" content="800" />
+<meta property="og:image:height" content="630" />
 <meta property="og:site_name" content="vanna" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="vanna — options pricing &amp; Greek-attributed backtesting" />
@@ -39,6 +39,11 @@
         crossorigin="anonymous"></script>
 </head>
 <body>
+
+<div class="hero"><picture>
+  <source media="(prefers-color-scheme: light)" srcset="img/hero-light.svg">
+  <img src="img/hero-dark.svg" alt="vanna: options pricing, Greeks and backtesting with every trade's P&amp;L attributed to its Greeks" width="1280" height="320">
+</picture></div>
 
 <header>
   <h1><span>vanna</span> — live in your browser</h1>
@@ -110,6 +115,13 @@
     <div class="tabpage" id="tab-attribution"><canvas id="chartAttribution" height="120"></canvas></div>
   </div>
 </div>
+
+<div class="how"><picture>
+  <source media="(prefers-color-scheme: light)" srcset="img/how-it-works-light.svg">
+  <img src="img/how-it-works-dark.svg" alt="How vanna works: inputs, synthetic path, price the legs, trade P&amp;L, Greek attribution" width="1200" height="400" loading="lazy">
+</picture></div>
+
+<p class="disclaimer"><strong>Educational tool, not trading advice.</strong> Backtests run on synthetic price paths (geometric Brownian motion with a stylised mean-reverting IV), so results are only as realistic as that model. Single-name equity options only, flat rates and volatility, continuous dividend yield. Not production-audited software.</p>
 
 <footer>Made with ❤️ in India by Krishna Anubhav · <a href="https://github.com/heykav/vanna">heykav/vanna</a></footer>
 
