@@ -29,7 +29,7 @@
      real HTTP response header - and GitHub Pages doesn't let a static
      site add custom response headers, so that protection genuinely isn't
      available here rather than silently pretended at. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self' https://cdn.jsdelivr.net https://www.deribit.com; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'" />
 <link rel="stylesheet" href="styles.css" />
 <script src="https://cdn.jsdelivr.net/pyodide/v314.0.6/full/pyodide.js"
         integrity="sha384-NV89XnNMjL1QhwMSII1A5nl9HxxqvDhq6dsIoI2bComfFnFR06or2wdEAHhXEgOI"
@@ -116,15 +116,35 @@
   </div>
 </div>
 
+<section class="live panel" id="live" aria-labelledby="live-h">
+  <h2 id="live-h">Live chain <span class="badge">real market data</span></h2>
+  <p class="live-note">Fetches the public, delayed Deribit BTC option book straight from your browser (no key, no server of mine), then prices every option with vanna's own engine. Not simulated. Prices are USD (Deribit quotes in BTC; converted with each expiry's forward). Rate is 0 and the forward is Deribit's, so this is Black-Scholes on a forward, which reproduces Deribit's own mark IV.</p>
+  <div class="live-controls">
+    <label for="liveExpiry">Expiry</label><select id="liveExpiry" disabled></select>
+    <label for="liveSide">Show</label>
+    <select id="liveSide"><option value="all">Calls and puts</option><option value="C">Calls</option><option value="P">Puts</option></select>
+    <label for="liveWidth">Strikes within</label>
+    <select id="liveWidth"><option value="0.1">±10% of forward</option><option value="0.25" selected>±25% of forward</option><option value="1">all strikes</option></select>
+    <label class="check"><input id="liveTwo" type="checkbox" checked /> two-sided quotes only</label>
+    <button id="liveRefresh" disabled>Fetch live chain</button>
+  </div>
+  <div id="liveStatus" role="status" aria-live="polite">Waiting for the Python runtime…</div>
+  <div id="liveMeta" class="live-meta"></div>
+  <div class="live-chart"><canvas id="chartSmile"></canvas></div>
+  <div class="table-wrap"><table id="liveTable"><thead></thead><tbody></tbody></table></div>
+  <p class="live-note small">Columns: <b>Mid</b> = (bid+ask)/2. <b>Model@mark</b> = vanna's Black-Scholes price at Deribit's mark IV; <b>Δ vs mid</b> = Model@mark minus Mid. <b>IV(mid)</b> = vol solved by vanna from the mid; <b>Deribit IV</b> = the exchange's mark IV. Greeks use IV(mid): vega and vanna per 1 vol point, volga per vol point squared, theta per day. Source: Deribit public API; data belongs to Deribit. Delayed snapshot, quotes can be stale or one-sided. Not trading advice.</p>
+</section>
+
 <div class="how"><picture>
   <source media="(prefers-color-scheme: light)" srcset="img/how-it-works-light.svg">
   <img src="img/how-it-works-dark.svg" alt="How vanna works: inputs, synthetic path, price the legs, trade P&amp;L, Greek attribution" width="1200" height="400" loading="lazy">
 </picture></div>
 
-<p class="disclaimer"><strong>Educational tool, not trading advice.</strong> Backtests run on synthetic price paths (geometric Brownian motion with a stylised mean-reverting IV), so results are only as realistic as that model. Single-name equity options only, flat rates and volatility, continuous dividend yield. Not production-audited software.</p>
+<p class="disclaimer"><strong>Educational tool, not trading advice.</strong> The backtest above runs on synthetic price paths (geometric Brownian motion with a stylised mean-reverting IV), so its results are only as realistic as that model; the Live chain section uses real public Deribit quotes (BTC options, forward-based, delayed). Single-name equity options only, flat rates and volatility, continuous dividend yield. Not production-audited software.</p>
 
 <footer>Made with ❤️ in India by Krishna Anubhav · <a href="https://github.com/heykav/vanna">heykav/vanna</a></footer>
 
 <script src="app.js"></script>
+<script src="live.js"></script>
 </body>
 </html>

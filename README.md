@@ -46,14 +46,51 @@ broken down by Greek.
 
 **Is not:**
 
-- **Not a historical backtester.** Backtests run on synthetic paths
-  (geometric Brownian motion plus a stylised mean-reverting IV), so results
-  are only as realistic as that model. There is no market-data loader.
+- **Not a historical option backtester.** By default, backtests run on
+  synthetic paths (geometric Brownian motion plus a stylised mean-reverting
+  IV), so results are only as realistic as that model. You can also feed in
+  a real daily price path and IV path (see "Real market data" below), but the
+  options are still priced by the model, not from historical option quotes:
+  no skew, no bid/ask spreads, no fees, no fills. The only market-data
+  loader is for Deribit's public BTC/ETH data.
 - **Not for index, futures, or multi-asset options.** Single-name equity
-  options only; European (closed form) and American (tree) exercise.
+  options only; European (closed form) and American (tree) exercise. The
+  live-chain and real-data features use Deribit's BTC options, which are
+  European and priced here on a forward with r = 0, as a demonstration of the
+  engine on real quotes, not a claim about equity options.
 - **Dividends are a continuous yield only.** No discrete dividends,
   borrow curves, or term structures; rates and volatility are flat.
 - **Not trading advice**, and not production-audited software.
+
+## Real market data (Deribit, public, no key)
+
+![Live chain tab of the web demo showing a real BTC option chain priced by vanna](docs/img/live-chain.jpg)
+
+*Screenshot of the live demo on a real Deribit chain, taken on 2026-10-31 (13NOV26 expiry, BTC forward about $77.5k). Your own page load fetches fresh data.*
+
+- **Live chain, in the web demo.** The [demo](https://heykav.github.io/vanna/)
+  has a "Live chain" section. Your browser fetches Deribit's public, delayed BTC
+  option book (CORS-enabled, no key), and vanna's engine, running in Pyodide,
+  solves the implied vol from each market mid, prices the option at Deribit's
+  own mark IV (a check of the engine against the exchange), and shows delta,
+  gamma, vega, theta, vanna and volga. The page shows the data timestamp, the
+  source, and counts of two-sided, one-sided and empty quotes. If the fetch
+  fails it says so; nothing is simulated as a fallback.
+- **Python loader.** `vanna.marketdata` (standard library only) fetches the same
+  chain, plus daily BTC perpetual closes and the DVOL index. Tests run against
+  saved real snapshots in `tests/data/` (each with a provenance block), so they
+  need no network. `python scripts/save_deribit_snapshots.py` re-captures them.
+- **Real-price example.** `python examples/real_price_backtest.py` runs an iron
+  condor over about 400 days of real BTC perpetual closes with the real DVOL
+  index as the vol path (`--live` downloads fresh data). The prices of the
+  options are model prices at DVOL, not historical quotes.
+
+Terms and limits, stated plainly: the data comes from Deribit's public
+unauthenticated API, which Deribit documents as fair-use rate limited; the data
+belongs to Deribit. I could not find an explicit redistribution licence for it
+(the terms page needs JavaScript to read), so the committed snapshots are small
+test fixtures with attribution, not a data product. The option book is a REST
+snapshot, not a tick feed, and individual quotes can be stale or one-sided.
 
 ## Quick start
 

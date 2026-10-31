@@ -33,7 +33,7 @@
 <text x="1000" y="192" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="12" fill="#9a9c96">delta gamma theta vega</text>
 <text x="1000" y="212" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="12" fill="#9a9c96">vanna volga + residual</text>
 <text x="40" y="288" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="12" fill="#B6FF2E">Whatever the Taylor terms do not explain is reported as "residual", never folded into a Greek.</text>
-<text x="40" y="312" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="12" fill="#9a9c96">Synthetic paths only: no market-data loader. Results are as realistic as the model, not more.</text>
+<text x="40" y="312" font-family='ui-monospace,"SFMono-Regular","DM Mono","DejaVu Sans Mono",Menlo,Consolas,monospace' font-size="12" fill="#9a9c96">Synthetic paths by default; real data only if supplied. Results are as realistic as the model, not more.</text>
 <circle cx="60" cy="116" r="4.5" fill="#B6FF2E"><animate attributeName="cx" values="60;1140" dur="7s" repeatCount="indefinite"/></circle>
 <style>@media (prefers-reduced-motion:reduce){*{animation:none!important}}</style>
 </g><rect x=".5" y=".5" width="1199" height="399" rx="14" fill="none" stroke="#2a2c28"/></svg>

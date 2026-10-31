@@ -16,6 +16,8 @@ const SRC_FILES = [
   "vanna/backtest/attribution.py",
   "vanna/backtest/engine.py",
   "vanna/backtest/metrics.py",
+  "vanna/marketdata/__init__.py",
+  "vanna/marketdata/deribit.py",
   "web_glue.py",
 ];
 
@@ -89,6 +91,7 @@ async function boot() {
 
     pyodide.FS.mkdirTree("/vanna_pkg/vanna/pricing");
     pyodide.FS.mkdirTree("/vanna_pkg/vanna/backtest");
+    pyodide.FS.mkdirTree("/vanna_pkg/vanna/marketdata");
     for (const f of SRC_FILES) {
       const resp = await fetch("vanna_src/" + f);
       if (!resp.ok) throw new Error("failed to fetch " + f + " (" + resp.status + ")");
@@ -98,13 +101,14 @@ async function boot() {
     pyodide.runPython(`
 import sys
 sys.path.insert(0, "/vanna_pkg")
-from web_glue import run_web_backtest
+from web_glue import run_web_backtest, analyze_live_chain
 `);
 
     booted = true;
     document.getElementById("run").disabled = false;
     document.getElementById("run").textContent = "Run backtest";
     setStatus("Ready.");
+    window.dispatchEvent(new Event("vanna-ready"));
     runBacktest();
   } catch (e) {
     setStatus("Failed to load: " + e, true);

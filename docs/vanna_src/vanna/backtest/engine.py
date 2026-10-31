@@ -45,6 +45,7 @@ def run_backtest(strategy: str, s0: float, iv0: float, r: float, mu: float,
                   entry_dte: int, exit_dte: int, n_trades: int,
                   seed: int = 0, vol_of_vol: float = 0.01,
                   iv_mean_reversion: float = 0.05, q: float = 0.0,
+                  spot_path=None, iv_path=None,
                   **strategy_params) -> BacktestResult:
     # This is the facade every entry point (CLI, GUI, browser demo) calls
     # with raw, unvalidated user input. Without checks here, a bad value
@@ -74,9 +75,23 @@ def run_backtest(strategy: str, s0: float, iv0: float, r: float, mu: float,
         raise ValueError(f"n_trades must be a positive integer, got {n_trades!r}")
 
     strategy_fn = STRATEGIES[strategy]
-    total_days = n_trades * entry_dte + 5
-    spot_path = simulate_gbm_path(s0, mu, iv0, total_days, seed)
-    iv_path = simulate_iv_path(iv0, vol_of_vol, iv_mean_reversion, total_days, seed)
+    if (spot_path is None) != (iv_path is None):
+        raise ValueError("spot_path and iv_path must be given together (or both omitted)")
+    if spot_path is None:
+        total_days = n_trades * entry_dte + 5
+        spot_path = simulate_gbm_path(s0, mu, iv0, total_days, seed)
+        iv_path = simulate_iv_path(iv0, vol_of_vol, iv_mean_reversion, total_days, seed)
+    else:
+        # Caller-supplied (e.g. real historical) daily paths. The strategies
+        # are still priced by the model on these inputs; only the underlying
+        # and IV inputs are real. n_trades becomes a cap: trading stops when
+        # the supplied history runs out.
+        if len(spot_path) != len(iv_path):
+            raise ValueError("spot_path and iv_path must have the same length")
+        if len(spot_path) <= entry_dte:
+            raise ValueError("supplied paths are shorter than entry_dte; nothing to trade")
+        if not all(math.isfinite(x) and x > 0 for x in list(spot_path) + list(iv_path)):
+            raise ValueError("spot_path and iv_path must contain positive finite numbers")
 
     equity_curve = [0.0]
     trades: list[Trade] = []
