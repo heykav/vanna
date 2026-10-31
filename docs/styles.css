@@ -114,3 +114,28 @@ footer a { color: var(--accent); }
   :root { --bg: #F4F5F2; --panel: #eceeea; --border: #c4c7c0; --text: #111211; --muted: #54564f; --accent: #00A84A; --red: #c62828; }
   button#run { color: #fff; }
 }
+
+/* Live chain (real Deribit data) */
+.live { max-width: 1400px; margin: 20px auto; }
+.live h2 { margin: 0 0 8px; font-size: 18px; }
+.badge { font-size: 11px; font-weight: 600; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 2px 8px; margin-left: 8px; vertical-align: middle; }
+.live-note { color: var(--muted); font-size: 13px; line-height: 1.6; margin: 0 0 12px; }
+.live-note.small { font-size: 12px; margin-top: 12px; }
+.live-controls { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-bottom: 10px; }
+.live-controls label { margin: 0; }
+.live-controls label.check { display: flex; gap: 6px; align-items: center; }
+.live-controls select, .live-controls button { width: auto; margin: 0; }
+.live-meta { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; color: var(--muted); margin: 8px 0; }
+.live-meta b { color: var(--text); }
+.live-chart { margin: 8px 0 12px; }
+.table-wrap { overflow-x: auto; max-height: 520px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; }
+#liveTable { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+#liveTable th, #liveTable td { padding: 4px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--border); }
+#liveTable th { position: sticky; top: 0; background: var(--panel, var(--bg)); color: var(--muted); font-weight: 600; }
+#liveTable td:first-child, #liveTable th:first-child, #liveTable td:nth-child(2), #liveTable th:nth-child(2) { text-align: left; }
+button#liveRefresh { background: var(--accent); color: #06130a; border: none; border-radius: 4px; padding: 8px 14px; font-weight: 700; font-size: 13px; cursor: pointer; }
+button#liveRefresh:disabled { background: var(--border); color: var(--muted); cursor: wait; }
+#liveStatus { font-size: 12px; color: var(--muted); min-height: 14px; }
+#liveStatus.error { color: var(--red); }
+.live-chart { position: relative; height: 260px; }
+.live-controls input[type="checkbox"] { width: auto; margin: 0; }

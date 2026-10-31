@@ -62,7 +62,7 @@ def render(c):
     out.append(f'<text x="40" y="288" font-family=\'{MONO}\' font-size="12" fill="{c["b"]}">'
                'Whatever the Taylor terms do not explain is reported as "residual", never folded into a Greek.</text>')
     out.append(f'<text x="40" y="312" font-family=\'{MONO}\' font-size="12" fill="{c["mute"]}">'
-               'Synthetic paths only: no market-data loader. Results are as realistic as the model, not more.</text>')
+               'Synthetic paths by default; real data only if supplied. Results are as realistic as the model, not more.</text>')
     out.append(f'<circle cx="60" cy="116" r="4.5" fill="{c["b"]}">'
                '<animate attributeName="cx" values="60;1140" dur="7s" repeatCount="indefinite"/></circle>')
     out.append('<style>@media (prefers-reduced-motion:reduce){*{animation:none!important}}</style>')

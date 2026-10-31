@@ -54,9 +54,9 @@ Subclass of `ValueError`.
 
 Model-driven: the underlying follows GBM and a mean-reverting IV path, and every option is priced from Black-Scholes-Merton. One trade is open at a time. P&L is per share.
 
-#### `vanna.backtest.engine.run_backtest(strategy: str, s0: float, iv0: float, r: float, mu: float, entry_dte: int, exit_dte: int, n_trades: int, seed: int = 0, vol_of_vol: float = 0.01, iv_mean_reversion: float = 0.05, q: float = 0.0, **strategy_params) -> vanna.backtest.engine.BacktestResult`
+#### `vanna.backtest.engine.run_backtest(strategy: str, s0: float, iv0: float, r: float, mu: float, entry_dte: int, exit_dte: int, n_trades: int, seed: int = 0, vol_of_vol: float = 0.01, iv_mean_reversion: float = 0.05, q: float = 0.0, spot_path=None, iv_path=None, **strategy_params) -> vanna.backtest.engine.BacktestResult`
 
-Run a sequential backtest. Extra keyword arguments (for example `delta=0.25`) are passed to the strategy function. Pass `q` for a continuous dividend yield. Raises `ValueError` on invalid input.
+Run a sequential backtest. Extra keyword arguments (for example `delta=0.25`) are passed to the strategy function. Pass `q` for a continuous dividend yield. Pass `spot_path` and `iv_path` together (equal-length daily sequences) to run on supplied data, for example the real history from `vanna.marketdata`, instead of the simulated paths; `n_trades` then caps the number of trades and trading stops when the data ends. Options are still priced by the model on those inputs. Raises `ValueError` on invalid input.
 
 #### `vanna.backtest.engine.BacktestResult(equity_curve: list[float], trades: list[vanna.backtest.engine.Trade] = <factory>)`
 
@@ -121,6 +121,54 @@ Strategy functions take `(spot, r, iv, dte_days, ...)` and return a list of `Leg
 Available: `covered_call`, `iron_condor`, `long_call`, `long_call_spread`, `long_put`, `long_straddle`, `short_call`, `short_call_spread`, `short_put`, `short_straddle`.
 
 Strike-picking strategies accept delta targets as keyword arguments (`delta`, `long_delta`, `short_delta`, `wing_delta`, `body_delta`) and `q`. `covered_call` is one share plus one short OTM call.
+
+## Market data: Deribit public API
+
+Standard library only, no API key. Source: Deribit's public, unauthenticated endpoints (`www.deribit.com/api/v2/public/`). The data is a delayed REST snapshot (one request per call), quotes can be stale or one-sided, and the data belongs to Deribit. Deribit quotes option prices in the underlying coin; the loader converts to USD with each expiry's `underlying_price`, and pricing with `S = underlying_price`, `r = 0` reproduces Deribit's own mark IV. Crypto options only (BTC, ETH), European. See `examples/real_price_backtest.py` and the live-chain tab of the web demo.
+
+#### `vanna.marketdata.deribit.fetch_chain(currency: str = 'BTC', timeout: float = 20.0) -> vanna.marketdata.deribit.Chain`
+
+Download the whole public option book for `currency` in one request.
+
+#### `vanna.marketdata.deribit.parse_book_summary(result: Iterable[dict]) -> vanna.marketdata.deribit.Chain`
+
+Build a `Chain` from the `result` list of Deribit's `get_book_summary_by_currency`. Prices are converted from coin to USD. Missing bids or asks stay `None`.
+
+#### `vanna.marketdata.deribit.load_chain_snapshot(path: str | pathlib.Path) -> vanna.marketdata.deribit.Chain`
+
+Load a saved snapshot file (`{"provenance": ..., "result": [...]}`), as committed in `tests/data/`.
+
+#### `vanna.marketdata.deribit.analyze_chain(chain: vanna.marketdata.deribit.Chain, r: float = 0.0, min_days: float = 0.5, expiry: str | None = None) -> dict`
+
+Price every quote with vanna's own engine and return `{as_of, source, counts, rows}`. Per row: implied vol solved from the market mid, the model price at Deribit's mark IV, and Greeks (including vanna and volga) at the solved IV, with vega and vanna per vol point. `counts` assigns every quote to exactly one bucket: too close to expiry, no quote, one-sided, two-sided; two-sided quotes are then split into IV solved or failed.
+
+#### `vanna.marketdata.deribit.parse_instrument_name(name: str) -> tuple[str, datetime.datetime, float, bool]`
+
+Split a name such as `BTC-27NOV26-73000-P` into currency, expiry (08:00 UTC), strike and call flag. Raises `ValueError` otherwise.
+
+#### `vanna.marketdata.deribit.fetch_history(currency: str = 'BTC', days: int = 365, timeout: float = 20.0, end_ms: int | None = None) -> vanna.marketdata.deribit.PriceHistory`
+
+Daily closes of the `<currency>-PERPETUAL` future and the DVOL implied-volatility index (two requests), aligned by UTC day. The perpetual is a futures price, not spot, and DVOL is a 30-day index with one vol for all strikes.
+
+#### `vanna.marketdata.deribit.parse_history(chart: dict, dvol: dict, currency: str = 'BTC') -> vanna.marketdata.deribit.PriceHistory`
+
+Align Deribit's `get_tradingview_chart_data` and `get_volatility_index_data` responses into a `PriceHistory`.
+
+#### `vanna.marketdata.deribit.load_history_snapshot(path: str | pathlib.Path) -> vanna.marketdata.deribit.PriceHistory`
+
+Load the saved history snapshot from `tests/data/`.
+
+#### `vanna.marketdata.deribit.OptionQuote(name: str, expiry: datetime.datetime, strike: float, is_call: bool, forward: float, bid: float | None, ask: float | None, mark: float | None, mark_iv: float | None, open_interest: float, volume: float)`
+
+One option quote, prices in USD.
+
+#### `vanna.marketdata.deribit.Chain(currency: str, as_of: datetime.datetime, index_price: float | None, quotes: tuple[vanna.marketdata.deribit.OptionQuote, ...], source: str = 'Deribit public API (www.deribit.com), delayed REST snapshot, unauthenticated')`
+
+A set of quotes with its timestamp and source.
+
+#### `vanna.marketdata.deribit.PriceHistory(currency: str, dates: tuple[str, ...], closes: tuple[float, ...], iv: tuple[float, ...], source: str = 'Deribit public API (www.deribit.com), delayed REST snapshot, unauthenticated')`
+
+Aligned daily closes and IV (decimal) with dates.
 
 ## Command line
 

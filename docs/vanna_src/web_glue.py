@@ -11,6 +11,7 @@ import json
 from vanna.backtest.engine import run_backtest
 from vanna.backtest.metrics import summarize
 from vanna.backtest.chain import price_leg
+from vanna.marketdata.deribit import analyze_chain, parse_book_summary
 
 
 def run_web_backtest(strategy, s0, iv0, r, mu, entry_dte, exit_dte, n_trades, seed):
@@ -69,3 +70,23 @@ def run_web_backtest(strategy, s0, iv0, r, mu, entry_dte, exit_dte, n_trades, se
             "avg_pnl": summary.avg_pnl,
         },
     })
+
+
+def analyze_live_chain(payload_json, r, expiry):
+    """Price a Deribit option book (the JSON the browser fetched) with the real engine.
+
+    The network call happens in JavaScript (Pyodide has no sockets); parsing,
+    implied vol, pricing and Greeks all run in vanna.marketdata / vanna.pricing.
+    """
+    try:
+        chain = parse_book_summary(json.loads(payload_json)["result"])
+        seen = {}
+        for q in chain.quotes:
+            seen[q.expiry.strftime("%d%b%y").lstrip("0").upper()] = q.expiry
+        expiries = [k for k, _ in sorted(seen.items(), key=lambda kv: kv[1])
+                    if (seen[k] - chain.as_of).total_seconds() > 86400]
+        out = analyze_chain(chain, r=r, expiry=expiry or (expiries[0] if expiries else None))
+        out["expiries"] = expiries
+        return json.dumps(out)
+    except (ValueError, KeyError, TypeError) as e:
+        return json.dumps({"error": str(e)})

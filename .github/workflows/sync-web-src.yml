@@ -13,6 +13,7 @@ on:
     paths:
       - "vanna/pricing/**"
       - "vanna/backtest/**"
+      - "vanna/marketdata/**"
 
 permissions:
   contents: read
@@ -31,11 +32,12 @@ jobs:
 
       - name: Copy engine source into docs/vanna_src
         run: |
-          rm -rf docs/vanna_src/vanna/pricing docs/vanna_src/vanna/backtest
-          mkdir -p docs/vanna_src/vanna/pricing docs/vanna_src/vanna/backtest
+          rm -rf docs/vanna_src/vanna/pricing docs/vanna_src/vanna/backtest docs/vanna_src/vanna/marketdata
+          mkdir -p docs/vanna_src/vanna/pricing docs/vanna_src/vanna/backtest docs/vanna_src/vanna/marketdata
           cp vanna/__init__.py docs/vanna_src/vanna/__init__.py
           cp vanna/pricing/*.py docs/vanna_src/vanna/pricing/
           cp vanna/backtest/*.py docs/vanna_src/vanna/backtest/
+          cp vanna/marketdata/*.py docs/vanna_src/vanna/marketdata/
 
       - name: Commit if anything changed
         run: |

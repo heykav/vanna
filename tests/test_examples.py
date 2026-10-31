@@ -13,6 +13,7 @@ EXPECTED = {
     "implied_vol.py": "rejected as expected",
     "covered_call_backtest.py": "Greek attribution summed",
     "dividend_yield.py": "put-call parity residual",
+    "real_price_backtest.py": "REAL DATA",
 }
 
 
